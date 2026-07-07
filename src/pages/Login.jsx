@@ -1,148 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCircle, GraduationCap } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import Swal from 'sweetalert2';
+import LoadingMotivation from '../components/LoadingMotivation';
+
+// Modular Landing Page Components
+import Navbar from '../components/landing/Navbar';
+import HeroSection from '../components/landing/HeroSection';
+import FeatureShowcase from '../components/landing/FeatureShowcase';
+import TreeEvolutionSection from '../components/landing/TreeEvolutionSection';
+import PricingSection from '../components/landing/PricingSection';
+import PaymentRoadmapModal from '../components/landing/PaymentRoadmapModal';
+import AuthModal from '../components/landing/AuthModal';
 
 const Login = () => {
   const navigate = useNavigate();
   const { currentUser, userRole } = useAuth();
   
-  const [role, setRole] = useState('student');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [showMotivation, setShowMotivation] = useState(false);
+  const [targetRole, setTargetRole] = useState(null);
 
-  // If already logged in, redirect
+  // Landing Page Interactive Modals State
+  const [authMode, setAuthMode] = useState(null); // null, 'login', or 'register'
+  const [showRoadmap, setShowRoadmap] = useState(false);
+
+  // If already logged in, show motivation first then redirect
   useEffect(() => {
     if (currentUser && userRole) {
-      navigate(userRole === 'student' ? '/student' : '/coach');
+      const shown = sessionStorage.getItem('motivationShown');
+      if (!shown) {
+        setTargetRole(userRole);
+        setShowMotivation(true);
+      } else {
+        navigate(userRole === 'student' ? '/student' : '/coach');
+      }
     }
   }, [currentUser, userRole, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (isRegister) {
-        // Öğrenci veya Koç kaydı
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        let assignedCoachId = null;
-
-        // Öğrenci kayıt oluyorsa, sistemdeki tek/ana koçu bul ve ata
-        if (role === 'student') {
-          const q = query(collection(db, 'users'), where('role', '==', 'coach'), limit(1));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            assignedCoachId = querySnapshot.docs[0].id;
-          }
-        }
-        
-        // Veritabanına kaydet
-        await setDoc(doc(db, 'users', user.uid), {
-          email: user.email,
-          role: role,
-          name: email.split('@')[0],
-          status: role === 'student' ? 'not-studying' : null,
-          coachId: role === 'student' ? assignedCoachId : null,
-          createdAt: new Date().toISOString()
-        });
-        
-      } else {
-        // Giriş yap
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    } catch (err) {
-      console.error("Firebase Login/Register Error: ", err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Hata!',
-        text: isRegister ? `Kayıt olurken bir hata oluştu: ${err.message}` : `Giriş başarısız: ${err.message}`,
-        confirmButtonColor: '#6366f1'
-      });
-    } finally {
-      setLoading(false);
+  const handleMotivationFinish = () => {
+    sessionStorage.setItem('motivationShown', 'true');
+    const isNew = sessionStorage.getItem('newStudentRegistered');
+    const roleToNavigate = targetRole || userRole || 'student';
+    if (isNew && roleToNavigate === 'student') {
+      sessionStorage.removeItem('newStudentRegistered');
+      navigate('/student/discovery?onboarding=1');
+    } else {
+      navigate(roleToNavigate === 'student' ? '/student' : '/coach');
     }
   };
 
+  const handleAuthSuccess = (navRole) => {
+    setAuthMode(null);
+    const roleToUse = navRole || userRole || 'student';
+    setTargetRole(roleToUse);
+    setShowMotivation(true);
+  };
+
+  if (showMotivation) {
+    return <LoadingMotivation onFinish={handleMotivationFinish} />;
+  }
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width: '100%' }}>
-      <div className="card glass-panel" style={{ width: '100%', maxWidth: '400px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ color: 'var(--primary-color)' }}>Öğrenci Takip</h1>
-          <p className="text-muted">{isRegister ? 'Yeni hesap oluşturun' : 'Sisteme giriş yapın'}</p>
+    <div style={{
+      minHeight: '100vh',
+      width: '100%',
+      background: '#0b0f19',
+      position: 'relative',
+      overflowX: 'hidden',
+      color: 'white',
+      fontFamily: 'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      {/* Navigation Bar */}
+      <Navbar 
+        onOpenAuth={(mode) => setAuthMode(mode)} 
+        onOpenRoadmap={() => setShowRoadmap(true)} 
+      />
+
+      {/* Main Hero Showcase */}
+      <HeroSection 
+        onOpenAuth={(mode) => setAuthMode(mode)} 
+      />
+
+      {/* 9 Major Project Features Showcase */}
+      <FeatureShowcase 
+        onOpenAuth={(mode) => setAuthMode(mode)} 
+      />
+
+      {/* Gamification Tree Evolution Visualizer */}
+      <TreeEvolutionSection 
+        onOpenAuth={(mode) => setAuthMode(mode)} 
+      />
+
+      {/* Pricing Packages & Payment Roadmap CTA */}
+      <PricingSection 
+        onOpenAuth={(mode) => setAuthMode(mode)} 
+        onOpenRoadmap={() => setShowRoadmap(true)} 
+      />
+
+      {/* Footer */}
+      <footer style={{
+        background: '#050810',
+        textAlign: 'center',
+        padding: '3rem 6%',
+        color: '#64748b',
+        fontSize: '0.85rem',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600, color: '#94a3b8' }}>
+          <span onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Ana Sayfa</span>
+          <span onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Özellikler</span>
+          <span onClick={() => document.getElementById('gamification')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Ağaç Evrimi</span>
+          <span onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Paketler & Fiyatlar</span>
+          <span onClick={() => setShowRoadmap(true)} style={{ cursor: 'pointer', color: '#fbbf24' }}>Ödeme Altyapısı Rehberi</span>
         </div>
+        <div style={{ color: '#475569', fontSize: '0.8rem', maxWidth: 600 }}>
+          © 2026 EduKoç PRO. YKS (TYT-AYT) ve LGS Yeni Nesil Öğrenci ve Koçluk Takip Altyapısı. Tüm Hakları Saklıdır.
+        </div>
+      </footer>
 
-        <form onSubmit={handleSubmit}>
-          <div className="input-group">
-            <label>E-posta</label>
-            <input 
-              type="email" 
-              required 
-              className="input-field" 
-              placeholder="ornek@email.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="input-group">
-            <label>Şifre</label>
-            <input 
-              type="password" 
-              required 
-              className="input-field" 
-              placeholder="••••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+      {/* Glassmorphic Authentication Modal (Login & Register) */}
+      {authMode && (
+        <AuthModal 
+          initialMode={authMode} 
+          onClose={() => setAuthMode(null)} 
+          onSuccess={handleAuthSuccess} 
+        />
+      )}
 
-          {isRegister && (
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-              <button
-                type="button"
-                className={`btn ${role === 'student' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1 }}
-                onClick={() => setRole('student')}
-              >
-                <GraduationCap size={18} />
-                Öğrenci
-              </button>
-              <button
-                type="button"
-                className={`btn ${role === 'coach' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ flex: 1 }}
-                onClick={() => setRole('coach')}
-              >
-                <UserCircle size={18} />
-                Koç
-              </button>
-            </div>
-          )}
-
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginBottom: '1rem' }} disabled={loading}>
-            {loading ? 'İşleniyor...' : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
-          </button>
-          
-          <div style={{ textAlign: 'center' }}>
-            <button 
-              type="button" 
-              className="btn btn-secondary" 
-              style={{ width: '100%', backgroundColor: 'transparent', border: '1px solid var(--border-color)', fontSize: '0.875rem' }}
-              onClick={() => { setIsRegister(!isRegister); }}
-            >
-              {isRegister ? 'Zaten hesabım var, Giriş Yap' : 'Hesabım yok, Kayıt Ol'}
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Payment Gateway Integration Roadmap Modal */}
+      {showRoadmap && (
+        <PaymentRoadmapModal 
+          onClose={() => setShowRoadmap(false)} 
+        />
+      )}
     </div>
   );
 };

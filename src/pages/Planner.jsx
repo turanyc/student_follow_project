@@ -109,10 +109,10 @@ const Planner = () => {
               onChange={(e) => setNewTaskTitle(e.target.value)}
               style={{ flex: 1 }}
             />
-            <select className="input-field" value={newTaskType} onChange={(e) => setNewTaskType(e.target.value)} style={{ width: '150px' }}>
+            <select className="input-field" value={newTaskType} onChange={(e) => setNewTaskType(e.target.value)} style={{ width: '160px' }}>
               <option value="study">Konu Çalışması</option>
               <option value="practice">Soru Çözümü</option>
-              <option value="gamified">Oyunlaştırma</option>
+              <option value="other">Diğer / Genel</option>
             </select>
             <button type="submit" className="btn btn-primary"><Plus size={18} /></button>
           </form>

@@ -31,12 +31,21 @@ const Messages = () => {
       });
       return () => unsubscribe();
     } else if (userRole === 'student') {
-      // Öğrenci, koçunun ID'sini kendi verisinden bulmalı
-      getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
-        if (docSnap.exists() && docSnap.data().coachId) {
-          setSelectedUser({ id: docSnap.data().coachId, name: 'Koç' });
+      // Koçu direkt role göre bul (böylece coachId olmasa dahi her zaman koça mesaj atılabilir)
+      const q = query(collection(db, 'users'), where('role', '==', 'coach'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const coachDoc = snapshot.docs[0];
+          setSelectedUser({ id: coachDoc.id, name: coachDoc.data().name || 'Koç', ...coachDoc.data() });
+        } else {
+          getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+            if (docSnap.exists() && docSnap.data().coachId) {
+              setSelectedUser({ id: docSnap.data().coachId, name: 'Koç' });
+            }
+          });
         }
       });
+      return () => unsubscribe();
     }
   }, [currentUser, userRole]);
 
@@ -44,8 +53,8 @@ const Messages = () => {
   useEffect(() => {
     if (!currentUser || !selectedUser) return;
 
-    // Mesajları her iki tarafa göre filtrele (senderId veya receiverId eşleşmeli)
-    const q = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
+    // Mesajları her iki tarafa göre filtrele ve anlık iletim için bellekte sırala
+    const q = collection(db, 'messages');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = [];
       snapshot.forEach((docSnap) => {
@@ -56,6 +65,11 @@ const Messages = () => {
         ) {
           msgs.push({ id: docSnap.id, ...data });
         }
+      });
+      msgs.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || Date.now());
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || Date.now());
+        return timeA - timeB;
       });
       setMessages(msgs);
     });
