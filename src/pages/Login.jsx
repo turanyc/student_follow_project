@@ -8,8 +8,7 @@ import Navbar from '../components/landing/Navbar';
 import HeroSection from '../components/landing/HeroSection';
 import FeatureShowcase from '../components/landing/FeatureShowcase';
 import TreeEvolutionSection from '../components/landing/TreeEvolutionSection';
-import PricingSection from '../components/landing/PricingSection';
-import PaymentRoadmapModal from '../components/landing/PaymentRoadmapModal';
+import ContactSection from '../components/landing/PricingSection';
 import AuthModal from '../components/landing/AuthModal';
 
 const Login = () => {
@@ -21,17 +20,19 @@ const Login = () => {
 
   // Landing Page Interactive Modals State
   const [authMode, setAuthMode] = useState(null); // null, 'login', or 'register'
-  const [showRoadmap, setShowRoadmap] = useState(false);
 
   // If already logged in, show motivation first then redirect
   useEffect(() => {
-    if (currentUser && userRole) {
-      const shown = sessionStorage.getItem('motivationShown');
-      if (!shown) {
-        setTargetRole(userRole);
-        setShowMotivation(true);
-      } else {
-        navigate(userRole === 'student' ? '/student' : '/coach');
+    if (currentUser) {
+      const effectiveRole = userRole;
+      if (effectiveRole) {
+        const shown = sessionStorage.getItem('motivationShown');
+        if (!shown) {
+          setTargetRole(effectiveRole);
+          setShowMotivation(true);
+        } else {
+          navigate(effectiveRole === 'student' ? '/student' : '/coach');
+        }
       }
     }
   }, [currentUser, userRole, navigate]);
@@ -56,23 +57,22 @@ const Login = () => {
   };
 
   if (showMotivation) {
-    return <LoadingMotivation onFinish={handleMotivationFinish} />;
+    return <LoadingMotivation onFinish={handleMotivationFinish} userName={currentUser?.displayName || currentUser?.email?.split('@')[0]} />;
   }
 
   return (
     <div style={{
       minHeight: '100vh',
       width: '100%',
-      background: '#0b0f19',
+      background: '#f8fafc',
       position: 'relative',
       overflowX: 'hidden',
-      color: 'white',
+      color: '#0f172a',
       fontFamily: 'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       {/* Navigation Bar */}
       <Navbar 
         onOpenAuth={(mode) => setAuthMode(mode)} 
-        onOpenRoadmap={() => setShowRoadmap(true)} 
       />
 
       {/* Main Hero Showcase */}
@@ -90,34 +90,32 @@ const Login = () => {
         onOpenAuth={(mode) => setAuthMode(mode)} 
       />
 
-      {/* Pricing Packages & Payment Roadmap CTA */}
-      <PricingSection 
+      {/* Contact Section (replaces Pricing) */}
+      <ContactSection 
         onOpenAuth={(mode) => setAuthMode(mode)} 
-        onOpenRoadmap={() => setShowRoadmap(true)} 
       />
 
       {/* Footer */}
       <footer style={{
-        background: '#050810',
+        background: '#ffffff',
         textAlign: 'center',
         padding: '3rem 6%',
         color: '#64748b',
-        fontSize: '0.85rem',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        fontSize: '0.88rem',
+        borderTop: '1px solid #e2e8f0',
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
         alignItems: 'center'
       }}>
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600, color: '#94a3b8' }}>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 700, color: '#334155' }}>
           <span onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Ana Sayfa</span>
           <span onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Özellikler</span>
           <span onClick={() => document.getElementById('gamification')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Ağaç Evrimi</span>
-          <span onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>Paketler & Fiyatlar</span>
-          <span onClick={() => setShowRoadmap(true)} style={{ cursor: 'pointer', color: '#fbbf24' }}>Ödeme Altyapısı Rehberi</span>
+          <span onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>İletişim</span>
         </div>
-        <div style={{ color: '#475569', fontSize: '0.8rem', maxWidth: 600 }}>
-          © 2026 EduKoç PRO. YKS (TYT-AYT) ve LGS Yeni Nesil Öğrenci ve Koçluk Takip Altyapısı. Tüm Hakları Saklıdır.
+        <div style={{ color: '#64748b', fontSize: '0.82rem', maxWidth: 600 }}>
+          © 2026 EduKoç PRO. YKS (TYT-AYT), LGS ve Tüm Öğrenciler İçin Yeni Nesil Koçluk ve Takip Altyapısı. Tüm Hakları Saklıdır.
         </div>
       </footer>
 
@@ -127,13 +125,6 @@ const Login = () => {
           initialMode={authMode} 
           onClose={() => setAuthMode(null)} 
           onSuccess={handleAuthSuccess} 
-        />
-      )}
-
-      {/* Payment Gateway Integration Roadmap Modal */}
-      {showRoadmap && (
-        <PaymentRoadmapModal 
-          onClose={() => setShowRoadmap(false)} 
         />
       )}
     </div>

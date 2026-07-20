@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { auth, db } from '../../lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 
 const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
@@ -79,8 +79,31 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
         if (onSuccess) onSuccess(role);
         
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
-        if (onSuccess) onSuccess();
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        let loggedInRole = 'student';
+
+        const isNurbanu = user?.email && user.email.toLowerCase().trim() === 'nurbanu@gmail.com';
+        if (isNurbanu) {
+          loggedInRole = 'coach';
+          await setDoc(doc(db, 'users', user.uid), {
+            email: user.email,
+            role: 'coach',
+            name: 'Nurbanu Koç',
+            plan: 'pro_coach'
+          }, { merge: true });
+        } else {
+          try {
+            const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+            if (userDocSnap.exists() && userDocSnap.data().role) {
+              loggedInRole = userDocSnap.data().role;
+            }
+          } catch (docErr) {
+            console.error('Kullanıcı rolü alınamadı:', docErr);
+          }
+        }
+
+        if (onSuccess) onSuccess(loggedInRole);
       }
     } catch (err) {
       console.error('Firebase Auth Error: ', err);
@@ -93,7 +116,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
         icon: 'error',
         title: 'Hata!',
         text: isRegister ? `Kayıt olurken bir hata oluştu: ${errorMsg}` : `Giriş başarısız: ${errorMsg}`,
-        confirmButtonColor: '#6366f1'
+        confirmButtonColor: '#0284c7'
       });
     } finally {
       setLoading(false);
@@ -103,17 +126,18 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(5, 8, 16, 0.85)', backdropFilter: 'blur(16px)',
+      background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(10px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1.5rem', animation: 'fadeIn 0.25s ease-out'
     }}>
       <div style={{
         width: '100%', maxWidth: 480,
-        background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))',
-        border: '1px solid rgba(139, 92, 246, 0.4)', borderRadius: 28,
-        boxShadow: '0 30px 80px rgba(0,0,0,0.8), 0 0 50px rgba(99,102,241,0.25)',
-        padding: '2.5rem 2.2rem', position: 'relative', color: 'white',
-        maxHeight: '90vh', overflowY: 'auto'
+        background: '#ffffff',
+        border: '1px solid #e2e8f0', borderRadius: 28,
+        boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.2), 0 0 1px 1px rgba(0, 0, 0, 0.05)',
+        padding: '2.5rem 2.2rem', position: 'relative', color: '#0f172a',
+        maxHeight: '90vh', overflowY: 'auto',
+        fontFamily: 'Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }} className="custom-scrollbar">
         
         {/* Close X Button */}
@@ -121,20 +145,20 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           onClick={onClose}
           style={{
             position: 'absolute', top: 20, right: 20,
-            width: 38, height: 38, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', cursor: 'pointer',
+            width: 38, height: 38, borderRadius: '50%', background: '#f1f5f9',
+            border: '1px solid #e2e8f0', color: '#64748b', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
           }}
-          onMouseOver={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; e.currentTarget.style.color = '#f87171'; }}
-          onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#94a3b8'; }}
+          onMouseOver={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}
+          onMouseOut={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
         >
           <X size={20} />
         </button>
 
         {/* Top Tabs */}
         <div style={{
-          display: 'flex', background: 'rgba(11, 15, 25, 0.7)', padding: '0.4rem',
-          borderRadius: 16, marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.08)'
+          display: 'flex', background: '#f1f5f9', padding: '0.35rem',
+          borderRadius: 16, marginBottom: '1.5rem', border: '1px solid #e2e8f0'
         }}>
           <button
             type="button"
@@ -142,9 +166,9 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
             style={{
               flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
               fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
-              background: !isRegister ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent',
-              color: !isRegister ? 'white' : '#94a3b8',
-              boxShadow: !isRegister ? '0 4px 15px rgba(99,102,241,0.4)' : 'none'
+              background: !isRegister ? '#ffffff' : 'transparent',
+              color: !isRegister ? '#0284c7' : '#64748b',
+              boxShadow: !isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
             }}
           >
             Giriş Yap
@@ -155,28 +179,31 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
             style={{
               flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
               fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
-              background: isRegister ? 'linear-gradient(135deg, #ec4899, #8b5cf6)' : 'transparent',
-              color: isRegister ? 'white' : '#94a3b8',
-              boxShadow: isRegister ? '0 4px 15px rgba(236,72,153,0.4)' : 'none'
+              background: isRegister ? '#ffffff' : 'transparent',
+              color: isRegister ? '#0284c7' : '#64748b',
+              boxShadow: isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
             }}
           >
             Ücretsiz Kayıt Ol
           </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem 1.2rem', background: '#ffffff', borderRadius: 20, border: '1px solid #f1f5f9', boxShadow: '0 4px 15px rgba(15, 23, 42, 0.05)' }}>
+            <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 86, width: 'auto', maxWidth: '300px', objectFit: 'contain' }} />
+          </div>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.3rem 0.8rem', borderRadius: 99, background: 'rgba(56, 189, 248, 0.15)',
-            color: '#38bdf8', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.6rem'
+            padding: '0.35rem 0.85rem', borderRadius: 99, background: '#e0f2fe',
+            color: '#0369a1', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #bae6fd'
           }}>
-            <Sparkles size={13} /> {isRegister ? '14 GÜN ÜCRETSİZ PRO DENEME' : 'EDUKOÇ PRO ALTYAPISI'}
+            <Sparkles size={13} color="#0284c7" /> {isRegister ? '14 GÜN ÜCRETSİZ PRO DENEME' : 'MENUTU KOÇLUK ALTYAPISI'}
           </div>
-          <h3 style={{ margin: '0 0 0.3rem', fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>
+          <h3 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 900, color: '#0f172a' }}>
             {isRegister ? 'Aramıza Hoş Geldiniz! 🚀' : 'Tekrar Hoş Geldiniz! 👋'}
           </h3>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8' }}>
-            {isRegister ? 'Hemen profilinizi oluşturun ve efsanevi ağacınızı büyütmeye başlayın.' : 'Hesabınıza giriş yaparak koçluk ve takip panelinize ulaşın.'}
+          <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b', maxWidth: '90%', lineHeight: 1.5 }}>
+            {isRegister ? 'Hemen profilinizi oluşturun ve koçluk altyapımızla çalışmaya başlayın.' : 'Hesabınıza giriş yaparak koçluk ve takip panelinize ulaşın.'}
           </p>
         </div>
 
@@ -185,7 +212,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           {/* If Register: Role Selection */}
           {isRegister && (
             <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
                 HESAP TÜRÜ SEÇİN
               </label>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -195,12 +222,12 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                     padding: '0.8rem', borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s',
-                    border: `1.5px solid ${role === 'student' ? '#6366f1' : 'rgba(255,255,255,0.1)'}`,
-                    background: role === 'student' ? 'rgba(99,102,241,0.22)' : 'rgba(255,255,255,0.03)',
-                    color: role === 'student' ? 'white' : '#94a3b8', fontWeight: 800, fontSize: '0.88rem'
+                    border: `1.5px solid ${role === 'student' ? '#0284c7' : '#cbd5e1'}`,
+                    background: role === 'student' ? '#f0f9ff' : '#f8fafc',
+                    color: role === 'student' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.88rem'
                   }}
                 >
-                  <GraduationCap size={18} color={role === 'student' ? '#a5b4fc' : '#64748b'} />
+                  <GraduationCap size={18} color={role === 'student' ? '#0284c7' : '#64748b'} />
                   Öğrenciyim
                 </button>
                 <button
@@ -209,12 +236,12 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                     padding: '0.8rem', borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s',
-                    border: `1.5px solid ${role === 'coach' ? '#ec4899' : 'rgba(255,255,255,0.1)'}`,
-                    background: role === 'coach' ? 'rgba(236,72,153,0.22)' : 'rgba(255,255,255,0.03)',
-                    color: role === 'coach' ? 'white' : '#94a3b8', fontWeight: 800, fontSize: '0.88rem'
+                    border: `1.5px solid ${role === 'coach' ? '#0284c7' : '#cbd5e1'}`,
+                    background: role === 'coach' ? '#f0f9ff' : '#f8fafc',
+                    color: role === 'coach' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.88rem'
                   }}
                 >
-                  <UserCircle size={18} color={role === 'coach' ? '#f472b6' : '#64748b'} />
+                  <UserCircle size={18} color={role === 'coach' ? '#0284c7' : '#64748b'} />
                   Koç / Eğitmenim
                 </button>
               </div>
@@ -224,7 +251,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           {/* If Register and Student: Exam Type (YKS vs LGS) */}
           {isRegister && role === 'student' && (
             <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
                 HAZIRLANDIĞINIZ SINAV
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -234,9 +261,9 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                     padding: '0.7rem', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
-                    border: `1.5px solid ${examType === 'yks' ? '#10b981' : 'rgba(255,255,255,0.1)'}`,
-                    background: examType === 'yks' ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.03)',
-                    color: examType === 'yks' ? '#6ee7b7' : '#94a3b8', fontWeight: 800, fontSize: '0.85rem'
+                    border: `1.5px solid ${examType === 'yks' ? '#0284c7' : '#cbd5e1'}`,
+                    background: examType === 'yks' ? '#f0f9ff' : '#f8fafc',
+                    color: examType === 'yks' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.85rem'
                   }}
                 >
                   <span>🎯 YKS (TYT-AYT)</span>
@@ -247,9 +274,9 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                     padding: '0.7rem', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
-                    border: `1.5px solid ${examType === 'lgs' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                    background: examType === 'lgs' ? 'rgba(245,158,11,0.18)' : 'rgba(255,255,255,0.03)',
-                    color: examType === 'lgs' ? '#fcd34d' : '#94a3b8', fontWeight: 800, fontSize: '0.85rem'
+                    border: `1.5px solid ${examType === 'lgs' ? '#0284c7' : '#cbd5e1'}`,
+                    background: examType === 'lgs' ? '#f0f9ff' : '#f8fafc',
+                    color: examType === 'lgs' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.85rem'
                   }}
                 >
                   <span>📘 LGS (MEB)</span>
@@ -262,7 +289,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           {isRegister && (
             <>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
                   AD SOYAD
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -275,17 +302,17 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                     onChange={e => setName(e.target.value)}
                     style={{
                       width: '100%', padding: '0.8rem 1rem 0.8rem 2.75rem', borderRadius: 14,
-                      border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(11, 15, 25, 0.7)',
-                      color: 'white', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
+                      border: '1px solid #cbd5e1', background: '#f8fafc',
+                      color: '#0f172a', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
                     }}
-                    onFocus={e => e.target.style.borderColor = '#6366f1'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+                    onFocus={e => e.target.style.borderColor = '#0284c7'}
+                    onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
                   TELEFON NUMARASI
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -298,11 +325,11 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                     onChange={e => setPhone(e.target.value)}
                     style={{
                       width: '100%', padding: '0.8rem 1rem 0.8rem 2.75rem', borderRadius: 14,
-                      border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(11, 15, 25, 0.7)',
-                      color: 'white', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
+                      border: '1px solid #cbd5e1', background: '#f8fafc',
+                      color: '#0f172a', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
                     }}
-                    onFocus={e => e.target.style.borderColor = '#6366f1'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+                    onFocus={e => e.target.style.borderColor = '#0284c7'}
+                    onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                   />
                 </div>
               </div>
@@ -311,7 +338,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
 
           {/* Email field */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
               E-POSTA ADRESİ
             </label>
             <div style={{ position: 'relative' }}>
@@ -324,18 +351,18 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                 onChange={e => setEmail(e.target.value)}
                 style={{
                   width: '100%', padding: '0.8rem 1rem 0.8rem 2.75rem', borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(11, 15, 25, 0.7)',
-                  color: 'white', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
+                  border: '1px solid #cbd5e1', background: '#f8fafc',
+                  color: '#0f172a', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
                 }}
-                onFocus={e => e.target.style.borderColor = '#6366f1'}
-                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+                onFocus={e => e.target.style.borderColor = '#0284c7'}
+                onBlur={e => e.target.style.borderColor = '#cbd5e1'}
               />
             </div>
           </div>
 
           {/* Password field */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
               ŞİFRE
             </label>
             <div style={{ position: 'relative' }}>
@@ -348,11 +375,11 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                 onChange={e => setPassword(e.target.value)}
                 style={{
                   width: '100%', padding: '0.8rem 1rem 0.8rem 2.75rem', borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(11, 15, 25, 0.7)',
-                  color: 'white', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
+                  border: '1px solid #cbd5e1', background: '#f8fafc',
+                  color: '#0f172a', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit'
                 }}
-                onFocus={e => e.target.style.borderColor = '#6366f1'}
-                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+                onFocus={e => e.target.style.borderColor = '#0284c7'}
+                onBlur={e => e.target.style.borderColor = '#cbd5e1'}
               />
             </div>
           </div>
@@ -362,43 +389,42 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
             type="submit"
             disabled={loading}
             style={{
-              width: '100%', padding: '1rem', borderRadius: 14, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #6366f1, #ec4899)', color: 'white',
+              width: '100%', padding: '1rem', borderRadius: 14, border: 'none', cursor: loading ? 'default' : 'pointer',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: 'white',
               fontWeight: 900, fontSize: '1.05rem', marginTop: '0.5rem',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-              boxShadow: '0 8px 25px rgba(99,102,241,0.5)', transition: 'all 0.2s'
+              boxShadow: '0 8px 25px rgba(2, 132, 199, 0.35)', transition: 'all 0.2s',
+              position: 'relative', overflow: 'hidden'
             }}
             onMouseOver={e => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseOut={e => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{
-                  width: 18, height: 18, borderRadius: '50%',
-                  border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white',
-                  animation: 'spin 0.8s linear infinite', display: 'inline-block'
-                }} />
-                İşleniyor...
-              </span>
-            ) : (
-              <>
-                <span>{isRegister ? 'Ücretsiz Kayıt Ol & Başla' : 'Giriş Yap & Panele Git'}</span>
-                <ArrowRight size={18} />
-              </>
-            )}
+            <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              {loading ? (
+                <>
+                  <Sparkles size={18} />
+                  <span>İşleniyor...</span>
+                </>
+              ) : (
+                <>
+                  <span>{isRegister ? 'Ücretsiz Kayıt Ol & Başla' : 'Giriş Yap & Panele Git'}</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </span>
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '0.6rem' }}>
             <span 
               onClick={() => setIsRegister(!isRegister)}
-              style={{ fontSize: '0.85rem', color: '#a5b4fc', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+              style={{ fontSize: '0.88rem', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}
             >
               {isRegister ? 'Zaten hesabınız var mı? Giriş Yapın' : 'Henüz hesabınız yok mu? Hemen Ücretsiz Kayıt Olun'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
-            <ShieldCheck size={14} color="#10b981" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.78rem', color: '#64748b' }}>
+            <ShieldCheck size={16} color="#0284c7" />
             <span>256-bit SSL ve KVKK Güvencesiyle Korunmaktadır</span>
           </div>
         </form>
@@ -408,3 +434,4 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
 };
 
 export default AuthModal;
+

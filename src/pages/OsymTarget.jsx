@@ -76,6 +76,8 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
       if (snap.exists()) {
         setUserData(snap.data());
       }
+    }, (err) => {
+      console.error('Kullanıcı profili okunamadı:', err);
     });
 
     // Load OSYM target
@@ -85,6 +87,9 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
         if (data.yks) setYksData(prev => ({ ...prev, ...data.yks }));
         if (data.lgs) setLgsData(prev => ({ ...prev, ...data.lgs }));
       }
+      setLoading(false);
+    }, (err) => {
+      console.error('ÖSYM hedef verisi okunamadı:', err);
       setLoading(false);
     });
 
@@ -196,7 +201,7 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
       </div>
 
       {/* Official Sheet Container */}
-      <div style={{
+      <div className="osym-sheet-container" style={{
         background: '#ffffff', border: '3px solid #0f172a', padding: '2.5rem',
         borderRadius: 8, boxShadow: '0 20px 50px rgba(0,0,0,0.1)', position: 'relative'
       }}>
@@ -215,8 +220,8 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
         </div>
 
         {/* Student Identity Box */}
-        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem' }}>
-          <table style={{ borderCollapse: 'collapse', border: '2px solid #0f172a', width: '380px', fontSize: '0.85rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem', width: '100%', overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', border: '2px solid #0f172a', width: '100%', maxWidth: '380px', minWidth: '300px', fontSize: '0.85rem' }}>
             <tbody>
               <tr>
                 <td style={{ background: '#f1f5f9', fontWeight: 800, border: '1px solid #0f172a', padding: '0.4rem 0.8rem', width: '160px' }}>T.C. KİMLİK NUMARASI</td>
@@ -247,229 +252,239 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               1. TYT TESTLERİNDEKİ DOĞRU VE YANLIŞ SAYILARI (4 Yanlış 1 Doğruyu Götürür)
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle} colSpan={3}>TÜRKÇE (40 Soru)</th>
-                  <th style={thStyle} colSpan={3}>SOSYAL BİLİMLER (20 Soru)</th>
-                  <th style={thStyle} colSpan={3}>TEMEL MATEMATİK (40 Soru)</th>
-                  <th style={thStyle} colSpan={3}>FEN BİLİMLERİ (20 Soru)</th>
-                </tr>
-                <tr>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
-                  <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* Turkce */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_turkce_d} onChange={e => handleYksChange('tyt_turkce_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_turkce_y} onChange={e => handleYksChange('tyt_turkce_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_turkce_d, yksData.tyt_turkce_y)}</span></td>
-                  {/* Sosyal */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_sosyal_d} onChange={e => handleYksChange('tyt_sosyal_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_sosyal_y} onChange={e => handleYksChange('tyt_sosyal_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_sosyal_d, yksData.tyt_sosyal_y)}</span></td>
-                  {/* Mat */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_mat_d} onChange={e => handleYksChange('tyt_mat_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_mat_y} onChange={e => handleYksChange('tyt_mat_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_mat_d, yksData.tyt_mat_y)}</span></td>
-                  {/* Fen */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_fen_d} onChange={e => handleYksChange('tyt_fen_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_fen_y} onChange={e => handleYksChange('tyt_fen_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_fen_d, yksData.tyt_fen_y)}</span></td>
-                </tr>
-                {/* TYT Total Summary Row */}
-                <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
-                  <td colSpan={6} style={{...tdStyle, textAlign:'right', paddingRight:'1rem'}}>TOPLAM TYT NETİ:</td>
-                  <td colSpan={6} style={{...tdStyle, textAlign:'left', paddingLeft:'1rem', color:'#4f46e5', fontSize:'1rem'}}>
-                    {(calcNet(yksData.tyt_turkce_d, yksData.tyt_turkce_y) + calcNet(yksData.tyt_sosyal_d, yksData.tyt_sosyal_y) + calcNet(yksData.tyt_mat_d, yksData.tyt_mat_y) + calcNet(yksData.tyt_fen_d, yksData.tyt_fen_y)).toFixed(2)} NET
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle} colSpan={3}>TÜRKÇE (40 Soru)</th>
+                    <th style={thStyle} colSpan={3}>SOSYAL BİLİMLER (20 Soru)</th>
+                    <th style={thStyle} colSpan={3}>TEMEL MATEMATİK (40 Soru)</th>
+                    <th style={thStyle} colSpan={3}>FEN BİLİMLERİ (20 Soru)</th>
+                  </tr>
+                  <tr>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Doğru</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e2e8f0'}}>Yanlış</th>
+                    <th style={{...thStyle, fontSize:'0.7rem', background:'#e0e7ff', color:'#4338ca'}}>Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* Turkce */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_turkce_d} onChange={e => handleYksChange('tyt_turkce_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_turkce_y} onChange={e => handleYksChange('tyt_turkce_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_turkce_d, yksData.tyt_turkce_y)}</span></td>
+                    {/* Sosyal */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_sosyal_d} onChange={e => handleYksChange('tyt_sosyal_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_sosyal_y} onChange={e => handleYksChange('tyt_sosyal_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_sosyal_d, yksData.tyt_sosyal_y)}</span></td>
+                    {/* Mat */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_mat_d} onChange={e => handleYksChange('tyt_mat_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_mat_y} onChange={e => handleYksChange('tyt_mat_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_mat_d, yksData.tyt_mat_y)}</span></td>
+                    {/* Fen */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_fen_d} onChange={e => handleYksChange('tyt_fen_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.tyt_fen_y} onChange={e => handleYksChange('tyt_fen_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.tyt_fen_d, yksData.tyt_fen_y)}</span></td>
+                  </tr>
+                  {/* TYT Total Summary Row */}
+                  <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
+                    <td colSpan={6} style={{...tdStyle, textAlign:'right', paddingRight:'1rem'}}>TOPLAM TYT NETİ:</td>
+                    <td colSpan={6} style={{...tdStyle, textAlign:'left', paddingLeft:'1rem', color:'#4f46e5', fontSize:'1rem'}}>
+                      {(calcNet(yksData.tyt_turkce_d, yksData.tyt_turkce_y) + calcNet(yksData.tyt_sosyal_d, yksData.tyt_sosyal_y) + calcNet(yksData.tyt_mat_d, yksData.tyt_mat_y) + calcNet(yksData.tyt_fen_d, yksData.tyt_fen_y)).toFixed(2)} NET
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 2: AYT */}
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               2. AYT TESTLERİNDEKİ DOĞRU VE YANLIŞ SAYILARI
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle} colSpan={9}>TÜRK DİLİ VE EDEBİYATI - SOSYAL BİLİMLER - 1</th>
-                  <th style={thStyle} colSpan={3}>YDT</th>
-                </tr>
-                <tr>
-                  <th style={thStyle} colSpan={3}>TÜRK DİLİ VE EDEBİYATI (24)</th>
-                  <th style={thStyle} colSpan={3}>TARİH - 1 (10)</th>
-                  <th style={thStyle} colSpan={3}>COĞRAFYA - 1 (6)</th>
-                  <th style={thStyle} colSpan={3}>YABANCI DİL (80)</th>
-                </tr>
-                <tr>
-                  {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
-                    <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* TDE */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tde_d} onChange={e => handleYksChange('ayt_tde_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tde_y} onChange={e => handleYksChange('ayt_tde_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tde_d, yksData.ayt_tde_y)}</span></td>
-                  {/* Tar1 */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar1_d} onChange={e => handleYksChange('ayt_tar1_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar1_y} onChange={e => handleYksChange('ayt_tar1_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tar1_d, yksData.ayt_tar1_y)}</span></td>
-                  {/* Cog1 */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog1_d} onChange={e => handleYksChange('ayt_cog1_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog1_y} onChange={e => handleYksChange('ayt_cog1_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_cog1_d, yksData.ayt_cog1_y)}</span></td>
-                  {/* YDT Ing */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ydt_ing_d} onChange={e => handleYksChange('ydt_ing_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ydt_ing_y} onChange={e => handleYksChange('ydt_ing_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ydt_ing_d, yksData.ydt_ing_y)}</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle} colSpan={9}>TÜRK DİLİ VE EDEBİYATI - SOSYAL BİLİMLER - 1</th>
+                    <th style={thStyle} colSpan={3}>YDT</th>
+                  </tr>
+                  <tr>
+                    <th style={thStyle} colSpan={3}>TÜRK DİLİ VE EDEBİYATI (24)</th>
+                    <th style={thStyle} colSpan={3}>TARİH - 1 (10)</th>
+                    <th style={thStyle} colSpan={3}>COĞRAFYA - 1 (6)</th>
+                    <th style={thStyle} colSpan={3}>YABANCI DİL (80)</th>
+                  </tr>
+                  <tr>
+                    {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
+                      <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* TDE */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tde_d} onChange={e => handleYksChange('ayt_tde_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tde_y} onChange={e => handleYksChange('ayt_tde_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tde_d, yksData.ayt_tde_y)}</span></td>
+                    {/* Tar1 */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar1_d} onChange={e => handleYksChange('ayt_tar1_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar1_y} onChange={e => handleYksChange('ayt_tar1_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tar1_d, yksData.ayt_tar1_y)}</span></td>
+                    {/* Cog1 */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog1_d} onChange={e => handleYksChange('ayt_cog1_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog1_y} onChange={e => handleYksChange('ayt_cog1_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_cog1_d, yksData.ayt_cog1_y)}</span></td>
+                    {/* YDT Ing */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ydt_ing_d} onChange={e => handleYksChange('ydt_ing_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ydt_ing_y} onChange={e => handleYksChange('ydt_ing_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ydt_ing_d, yksData.ydt_ing_y)}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 2.1: AYT Sosyal 2 & Sayısal */}
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle} colSpan={6}>MATEMATİK VE FEN BİLİMLERİ (SAYISAL)</th>
-                  <th style={thStyle} colSpan={6}>SOSYAL BİLİMLER - 2 (SÖZEL)</th>
-                </tr>
-                <tr>
-                  <th style={thStyle} colSpan={3}>MATEMATİK (40)</th>
-                  <th style={thStyle} colSpan={3}>FİZİK (14)</th>
-                  <th style={thStyle} colSpan={3}>TARİH - 2 (11)</th>
-                  <th style={thStyle} colSpan={3}>COĞRAFYA - 2 (11)</th>
-                </tr>
-                <tr>
-                  {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
-                    <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* Mat */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_mat_d} onChange={e => handleYksChange('ayt_mat_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_mat_y} onChange={e => handleYksChange('ayt_mat_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_mat_d, yksData.ayt_mat_y)}</span></td>
-                  {/* Fizik */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fizik_d} onChange={e => handleYksChange('ayt_fizik_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fizik_y} onChange={e => handleYksChange('ayt_fizik_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_fizik_d, yksData.ayt_fizik_y)}</span></td>
-                  {/* Tar2 */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar2_d} onChange={e => handleYksChange('ayt_tar2_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar2_y} onChange={e => handleYksChange('ayt_tar2_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tar2_d, yksData.ayt_tar2_y)}</span></td>
-                  {/* Cog2 */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog2_d} onChange={e => handleYksChange('ayt_cog2_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog2_y} onChange={e => handleYksChange('ayt_cog2_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_cog2_d, yksData.ayt_cog2_y)}</span></td>
-                </tr>
-                {/* Second row of Sayisal & Sozel 2 */}
-                <tr>
-                  <th style={thStyle} colSpan={3}>KİMYA (13)</th>
-                  <th style={thStyle} colSpan={3}>BİYOLOJİ (13)</th>
-                  <th style={thStyle} colSpan={3}>FELSEFE GRUBU (12)</th>
-                  <th style={thStyle} colSpan={3}>DKAB / İLAVE FELS. (6)</th>
-                </tr>
-                <tr>
-                  {/* Kimya */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_kimya_d} onChange={e => handleYksChange('ayt_kimya_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_kimya_y} onChange={e => handleYksChange('ayt_kimya_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_kimya_d, yksData.ayt_kimya_y)}</span></td>
-                  {/* Biyo */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_biyo_d} onChange={e => handleYksChange('ayt_biyo_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_biyo_y} onChange={e => handleYksChange('ayt_biyo_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_biyo_d, yksData.ayt_biyo_y)}</span></td>
-                  {/* Fels */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fels_d} onChange={e => handleYksChange('ayt_fels_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fels_y} onChange={e => handleYksChange('ayt_fels_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_fels_d, yksData.ayt_fels_y)}</span></td>
-                  {/* DKAB */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_dkab_d} onChange={e => handleYksChange('ayt_dkab_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_dkab_y} onChange={e => handleYksChange('ayt_dkab_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_dkab_d, yksData.ayt_dkab_y)}</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle} colSpan={6}>MATEMATİK VE FEN BİLİMLERİ (SAYISAL)</th>
+                    <th style={thStyle} colSpan={6}>SOSYAL BİLİMLER - 2 (SÖZEL)</th>
+                  </tr>
+                  <tr>
+                    <th style={thStyle} colSpan={3}>MATEMATİK (40)</th>
+                    <th style={thStyle} colSpan={3}>FİZİK (14)</th>
+                    <th style={thStyle} colSpan={3}>TARİH - 2 (11)</th>
+                    <th style={thStyle} colSpan={3}>COĞRAFYA - 2 (11)</th>
+                  </tr>
+                  <tr>
+                    {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
+                      <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* Mat */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_mat_d} onChange={e => handleYksChange('ayt_mat_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_mat_y} onChange={e => handleYksChange('ayt_mat_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_mat_d, yksData.ayt_mat_y)}</span></td>
+                    {/* Fizik */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fizik_d} onChange={e => handleYksChange('ayt_fizik_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fizik_y} onChange={e => handleYksChange('ayt_fizik_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_fizik_d, yksData.ayt_fizik_y)}</span></td>
+                    {/* Tar2 */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar2_d} onChange={e => handleYksChange('ayt_tar2_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_tar2_y} onChange={e => handleYksChange('ayt_tar2_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_tar2_d, yksData.ayt_tar2_y)}</span></td>
+                    {/* Cog2 */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog2_d} onChange={e => handleYksChange('ayt_cog2_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_cog2_y} onChange={e => handleYksChange('ayt_cog2_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_cog2_d, yksData.ayt_cog2_y)}</span></td>
+                  </tr>
+                  {/* Second row of Sayisal & Sozel 2 */}
+                  <tr>
+                    <th style={thStyle} colSpan={3}>KİMYA (13)</th>
+                    <th style={thStyle} colSpan={3}>BİYOLOJİ (13)</th>
+                    <th style={thStyle} colSpan={3}>FELSEFE GRUBU (12)</th>
+                    <th style={thStyle} colSpan={3}>DKAB / İLAVE FELS. (6)</th>
+                  </tr>
+                  <tr>
+                    {/* Kimya */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_kimya_d} onChange={e => handleYksChange('ayt_kimya_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_kimya_y} onChange={e => handleYksChange('ayt_kimya_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_kimya_d, yksData.ayt_kimya_y)}</span></td>
+                    {/* Biyo */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_biyo_d} onChange={e => handleYksChange('ayt_biyo_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_biyo_y} onChange={e => handleYksChange('ayt_biyo_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_biyo_d, yksData.ayt_biyo_y)}</span></td>
+                    {/* Fels */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fels_d} onChange={e => handleYksChange('ayt_fels_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_fels_y} onChange={e => handleYksChange('ayt_fels_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_fels_d, yksData.ayt_fels_y)}</span></td>
+                    {/* DKAB */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_dkab_d} onChange={e => handleYksChange('ayt_dkab_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={yksData.ayt_dkab_y} onChange={e => handleYksChange('ayt_dkab_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(yksData.ayt_dkab_d, yksData.ayt_dkab_y)}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 3: OBP & Diploma */}
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               3. OKUL VE ORTAÖĞRETİM BAŞARI PUANI BİLGİLERİ
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>DİPLOMA NOTU</th>
-                  <th style={thStyle}>ORTAÖĞRETİM BAŞARI PUANI (OBP)</th>
-                  <th style={thStyle}>OKUL KODU</th>
-                  <th style={thStyle}>OKUL TÜRÜ KODU</th>
-                  <th style={thStyle}>ALAN KODU</th>
-                  <th style={thStyle}>DAL NO</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={tdStyle}><input type="number" step="0.1" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.diplomaNotu} onChange={e => {
-                    const dip = Number(e.target.value);
-                    setYksData({...yksData, diplomaNotu: dip, obp: dip * 5});
-                  }} /></td>
-                  <td style={{...tdStyle, fontWeight:800, color:'#4f46e5'}}>{yksData.obp}</td>
-                  <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.okulKodu} onChange={e => setYksData({...yksData, okulKodu: e.target.value})} /></td>
-                  <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.okulTuru} onChange={e => setYksData({...yksData, okulTuru: e.target.value})} /></td>
-                  <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.alanKodu} onChange={e => setYksData({...yksData, alanKodu: e.target.value})} /></td>
-                  <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'60px'}} disabled={readOnly} value={yksData.dalNo} onChange={e => setYksData({...yksData, dalNo: e.target.value})} /></td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>DİPLOMA NOTU</th>
+                    <th style={thStyle}>ORTAÖĞRETİM BAŞARI PUANI (OBP)</th>
+                    <th style={thStyle}>OKUL KODU</th>
+                    <th style={thStyle}>OKUL TÜRÜ KODU</th>
+                    <th style={thStyle}>ALAN KODU</th>
+                    <th style={thStyle}>DAL NO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdStyle}><input type="number" step="0.1" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.diplomaNotu} onChange={e => {
+                      const dip = Number(e.target.value);
+                      setYksData({...yksData, diplomaNotu: dip, obp: dip * 5});
+                    }} /></td>
+                    <td style={{...tdStyle, fontWeight:800, color:'#4f46e5'}}>{yksData.obp}</td>
+                    <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.okulKodu} onChange={e => setYksData({...yksData, okulKodu: e.target.value})} /></td>
+                    <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.okulTuru} onChange={e => setYksData({...yksData, okulTuru: e.target.value})} /></td>
+                    <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'80px'}} disabled={readOnly} value={yksData.alanKodu} onChange={e => setYksData({...yksData, alanKodu: e.target.value})} /></td>
+                    <td style={tdStyle}><input type="text" style={{...inputStyle, maxWidth:'60px'}} disabled={readOnly} value={yksData.dalNo} onChange={e => setYksData({...yksData, dalNo: e.target.value})} /></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 4: Puan ve Sıralama */}
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               4. SINAV VE YERLEŞTİRME PUANLARI VE BAŞARI SIRALARI HEDEFLERİ
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={{...thStyle, width:'10%'}}>PUAN TÜRÜ</th>
-                  <th style={{...thStyle, width:'18%', background:'#e0e7ff', color:'#3730a3'}}>HAM PUAN</th>
-                  <th style={{...thStyle, width:'18%', background:'#e0e7ff', color:'#3730a3'}}>HAM BAŞARI SIRASI</th>
-                  <th style={{...thStyle, width:'18%', background:'#ecfdf5', color:'#065f46'}}>YERLEŞTİRME PUANI</th>
-                  <th style={{...thStyle, width:'18%', background:'#ecfdf5', color:'#065f46'}}>YER. BAŞARI SIRASI</th>
-                  <th style={{...thStyle, width:'18%'}}>EK PUANLI SIRALAMA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {['tyt','say','soz','ea','dil'].map((type) => {
-                  const label = type.toUpperCase();
-                  return (
-                    <tr key={type}>
-                      <td style={{...tdStyle, fontWeight:800, background:'#f8fafc'}}>{label}</td>
-                      <td style={tdStyle}><input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px'}} disabled={readOnly} value={yksData[`${type}_puan`]} onChange={e => handleYksChange(`${type}_puan`, e.target.value)} /></td>
-                      <td style={tdStyle}><input type="number" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#4338ca'}} disabled={readOnly} value={yksData[`${type}_sira`]} onChange={e => handleYksChange(`${type}_sira`, e.target.value)} /></td>
-                      <td style={tdStyle}><input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px'}} disabled={readOnly} value={yksData[`${type}_yer_puan`]} onChange={e => handleYksChange(`${type}_yer_puan`, e.target.value)} /></td>
-                      <td style={tdStyle}><input type="number" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={yksData[`${type}_yer_sira`]} onChange={e => handleYksChange(`${type}_yer_sira`, e.target.value)} /></td>
-                      <td style={tdStyle}>---</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={{...thStyle, width:'10%'}}>PUAN TÜRÜ</th>
+                    <th style={{...thStyle, width:'18%', background:'#e0e7ff', color:'#3730a3'}}>HAM PUAN</th>
+                    <th style={{...thStyle, width:'18%', background:'#e0e7ff', color:'#3730a3'}}>HAM BAŞARI SIRASI</th>
+                    <th style={{...thStyle, width:'18%', background:'#ecfdf5', color:'#065f46'}}>YERLEŞTİRME PUANI</th>
+                    <th style={{...thStyle, width:'18%', background:'#ecfdf5', color:'#065f46'}}>YER. BAŞARI SIRASI</th>
+                    <th style={{...thStyle, width:'18%'}}>EK PUANLI SIRALAMA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['tyt','say','soz','ea','dil'].map((type) => {
+                    const label = type.toUpperCase();
+                    return (
+                      <tr key={type}>
+                        <td style={{...tdStyle, fontWeight:800, background:'#f8fafc'}}>{label}</td>
+                        <td style={tdStyle}><input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px'}} disabled={readOnly} value={yksData[`${type}_puan`]} onChange={e => handleYksChange(`${type}_puan`, e.target.value)} /></td>
+                        <td style={tdStyle}><input type="number" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#4338ca'}} disabled={readOnly} value={yksData[`${type}_sira`]} onChange={e => handleYksChange(`${type}_sira`, e.target.value)} /></td>
+                        <td style={tdStyle}><input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px'}} disabled={readOnly} value={yksData[`${type}_yer_puan`]} onChange={e => handleYksChange(`${type}_yer_puan`, e.target.value)} /></td>
+                        <td style={tdStyle}><input type="number" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={yksData[`${type}_yer_sira`]} onChange={e => handleYksChange(`${type}_yer_sira`, e.target.value)} /></td>
+                        <td style={tdStyle}>---</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           /* ─── LGS VIEW ─── */
@@ -477,133 +492,141 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               1. LGS SÖZEL VE SAYISAL BÖLÜM TESTLERİ (3 Yanlış 1 Doğruyu Götürür)
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle} colSpan={3}>TÜRKÇE (20 Soru)</th>
-                  <th style={thStyle} colSpan={3}>MATEMATİK (20 Soru)</th>
-                  <th style={thStyle} colSpan={3}>FEN BİLİMLERİ (20 Soru)</th>
-                </tr>
-                <tr>
-                  {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
-                    <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* Turkce */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_turkce_d} onChange={e => handleLgsChange('lgs_turkce_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_turkce_y} onChange={e => handleLgsChange('lgs_turkce_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_turkce_d, lgsData.lgs_turkce_y, 3)}</span></td>
-                  {/* Mat */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_mat_d} onChange={e => handleLgsChange('lgs_mat_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_mat_y} onChange={e => handleLgsChange('lgs_mat_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_mat_d, lgsData.lgs_mat_y, 3)}</span></td>
-                  {/* Fen */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_fen_d} onChange={e => handleLgsChange('lgs_fen_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_fen_y} onChange={e => handleLgsChange('lgs_fen_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_fen_d, lgsData.lgs_fen_y, 3)}</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle} colSpan={3}>TÜRKÇE (20 Soru)</th>
+                    <th style={thStyle} colSpan={3}>MATEMATİK (20 Soru)</th>
+                    <th style={thStyle} colSpan={3}>FEN BİLİMLERİ (20 Soru)</th>
+                  </tr>
+                  <tr>
+                    {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
+                      <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* Turkce */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_turkce_d} onChange={e => handleLgsChange('lgs_turkce_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_turkce_y} onChange={e => handleLgsChange('lgs_turkce_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_turkce_d, lgsData.lgs_turkce_y, 3)}</span></td>
+                    {/* Mat */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_mat_d} onChange={e => handleLgsChange('lgs_mat_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_mat_y} onChange={e => handleLgsChange('lgs_mat_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_mat_d, lgsData.lgs_mat_y, 3)}</span></td>
+                    {/* Fen */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_fen_d} onChange={e => handleLgsChange('lgs_fen_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_fen_y} onChange={e => handleLgsChange('lgs_fen_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_fen_d, lgsData.lgs_fen_y, 3)}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle} colSpan={3}>T.C. İNKILAP TARİHİ (10 Soru)</th>
-                  <th style={thStyle} colSpan={3}>YABANCI DİL / İNG. (10 Soru)</th>
-                  <th style={thStyle} colSpan={3}>DİN KÜLTÜRÜ VE AHLAK B. (10 Soru)</th>
-                </tr>
-                <tr>
-                  {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
-                    <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {/* Inkilap */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_inkilap_d} onChange={e => handleLgsChange('lgs_inkilap_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_inkilap_y} onChange={e => handleLgsChange('lgs_inkilap_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_inkilap_d, lgsData.lgs_inkilap_y, 3)}</span></td>
-                  {/* Ing */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_ing_d} onChange={e => handleLgsChange('lgs_ing_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_ing_y} onChange={e => handleLgsChange('lgs_ing_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_ing_d, lgsData.lgs_ing_y, 3)}</span></td>
-                  {/* Din */}
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_din_d} onChange={e => handleLgsChange('lgs_din_d', e.target.value)} /></td>
-                  <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_din_y} onChange={e => handleLgsChange('lgs_din_y', e.target.value)} /></td>
-                  <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_din_d, lgsData.lgs_din_y, 3)}</span></td>
-                </tr>
-                {/* LGS Total Summary Row */}
-                <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
-                  <td colSpan={6} style={{...tdStyle, textAlign:'right', paddingRight:'1rem'}}>TOPLAM LGS NETİ (90 Soru):</td>
-                  <td colSpan={3} style={{...tdStyle, textAlign:'center', color:'#d97706', fontSize:'1rem'}}>
-                    {(calcNet(lgsData.lgs_turkce_d, lgsData.lgs_turkce_y, 3) + calcNet(lgsData.lgs_mat_d, lgsData.lgs_mat_y, 3) + calcNet(lgsData.lgs_fen_d, lgsData.lgs_fen_y, 3) + calcNet(lgsData.lgs_inkilap_d, lgsData.lgs_inkilap_y, 3) + calcNet(lgsData.lgs_ing_d, lgsData.lgs_ing_y, 3) + calcNet(lgsData.lgs_din_d, lgsData.lgs_din_y, 3)).toFixed(2)} NET
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle} colSpan={3}>T.C. İNKILAP TARİHİ (10 Soru)</th>
+                    <th style={thStyle} colSpan={3}>YABANCI DİL / İNG. (10 Soru)</th>
+                    <th style={thStyle} colSpan={3}>DİN KÜLTÜRÜ VE AHLAK B. (10 Soru)</th>
+                  </tr>
+                  <tr>
+                    {['Doğru','Yanlış','Net','Doğru','Yanlış','Net','Doğru','Yanlış','Net'].map((t, i) => (
+                      <th key={i} style={{...thStyle, fontSize:'0.7rem', background: t==='Net' ? '#e0e7ff' : '#e2e8f0', color: t==='Net' ? '#4338ca' : '#0f172a'}}>{t}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* Inkilap */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_inkilap_d} onChange={e => handleLgsChange('lgs_inkilap_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_inkilap_y} onChange={e => handleLgsChange('lgs_inkilap_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_inkilap_d, lgsData.lgs_inkilap_y, 3)}</span></td>
+                    {/* Ing */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_ing_d} onChange={e => handleLgsChange('lgs_ing_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_ing_y} onChange={e => handleLgsChange('lgs_ing_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_ing_d, lgsData.lgs_ing_y, 3)}</span></td>
+                    {/* Din */}
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_din_d} onChange={e => handleLgsChange('lgs_din_d', e.target.value)} /></td>
+                    <td style={tdStyle}><input type="number" style={inputStyle} disabled={readOnly} value={lgsData.lgs_din_y} onChange={e => handleLgsChange('lgs_din_y', e.target.value)} /></td>
+                    <td style={{...tdStyle, background:'#f8fafc'}}><span style={netBadgeStyle}>{calcNet(lgsData.lgs_din_d, lgsData.lgs_din_y, 3)}</span></td>
+                  </tr>
+                  {/* LGS Total Summary Row */}
+                  <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
+                    <td colSpan={6} style={{...tdStyle, textAlign:'right', paddingRight:'1rem'}}>TOPLAM LGS NETİ (90 Soru):</td>
+                    <td colSpan={3} style={{...tdStyle, textAlign:'center', color:'#d97706', fontSize:'1rem'}}>
+                      {(calcNet(lgsData.lgs_turkce_d, lgsData.lgs_turkce_y, 3) + calcNet(lgsData.lgs_mat_d, lgsData.lgs_mat_y, 3) + calcNet(lgsData.lgs_fen_d, lgsData.lgs_fen_y, 3) + calcNet(lgsData.lgs_inkilap_d, lgsData.lgs_inkilap_y, 3) + calcNet(lgsData.lgs_ing_d, lgsData.lgs_ing_y, 3) + calcNet(lgsData.lgs_din_d, lgsData.lgs_din_y, 3)).toFixed(2)} NET
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 2: OBP */}
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               2. ORTAOKUL BAŞARI PUANI BİLGİLERİ (OBP)
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>6. SINIF YIL SONU PUANI</th>
-                  <th style={thStyle}>7. SINIF YIL SONU PUANI</th>
-                  <th style={thStyle}>8. SINIF YIL SONU PUANI</th>
-                  <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>ORTAOKUL BAŞARI PUANI (OBP)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif6_ybp} onChange={e => {
-                    const v = Number(e.target.value);
-                    setLgsData({...lgsData, sinif6_ybp: v, lgs_obp: ((v + lgsData.sinif7_ybp + lgsData.sinif8_ybp)/3).toFixed(2)});
-                  }} /></td>
-                  <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif7_ybp} onChange={e => {
-                    const v = Number(e.target.value);
-                    setLgsData({...lgsData, sinif7_ybp: v, lgs_obp: ((lgsData.sinif6_ybp + v + lgsData.sinif8_ybp)/3).toFixed(2)});
-                  }} /></td>
-                  <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif8_ybp} onChange={e => {
-                    const v = Number(e.target.value);
-                    setLgsData({...lgsData, sinif8_ybp: v, lgs_obp: ((lgsData.sinif6_ybp + lgsData.sinif7_ybp + v)/3).toFixed(2)});
-                  }} /></td>
-                  <td style={{...tdStyle, fontWeight:800, color:'#059669', fontSize:'1.1rem'}}>{lgsData.lgs_obp}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>6. SINIF YIL SONU PUANI</th>
+                    <th style={thStyle}>7. SINIF YIL SONU PUANI</th>
+                    <th style={thStyle}>8. SINIF YIL SONU PUANI</th>
+                    <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>ORTAOKUL BAŞARI PUANI (OBP)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif6_ybp} onChange={e => {
+                      const v = Number(e.target.value);
+                      setLgsData({...lgsData, sinif6_ybp: v, lgs_obp: ((v + lgsData.sinif7_ybp + lgsData.sinif8_ybp)/3).toFixed(2)});
+                    }} /></td>
+                    <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif7_ybp} onChange={e => {
+                      const v = Number(e.target.value);
+                      setLgsData({...lgsData, sinif7_ybp: v, lgs_obp: ((lgsData.sinif6_ybp + v + lgsData.sinif8_ybp)/3).toFixed(2)});
+                    }} /></td>
+                    <td style={tdStyle}><input type="number" step="0.1" style={inputStyle} disabled={readOnly} value={lgsData.sinif8_ybp} onChange={e => {
+                      const v = Number(e.target.value);
+                      setLgsData({...lgsData, sinif8_ybp: v, lgs_obp: ((lgsData.sinif6_ybp + lgsData.sinif7_ybp + v)/3).toFixed(2)});
+                    }} /></td>
+                    <td style={{...tdStyle, fontWeight:800, color:'#059669', fontSize:'1.1rem'}}>{lgsData.lgs_obp}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Table 3: Puan & Yuzdelik */}
             <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#0f172a' }}>
               3. MERKEZÎ SINAV HEDEF PUANI VE YÜZDELİK DİLİMLER
             </div>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={{...thStyle, background:'#fffbeb', color:'#92400e'}}>LGS HEDEF PUANI (500 ÜZERİNDEN)</th>
-                  <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>GENEL YÜZDELİK DİLİM HEDEFİ</th>
-                  <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>İL YÜZDELİK DİLİM HEDEFİ</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={tdStyle}>
-                    <input type="number" step="0.01" style={{...inputStyle, maxWidth:'120px', fontSize:'1.1rem', color:'#d97706'}} disabled={readOnly} value={lgsData.lgs_puan} onChange={e => handleLgsChange('lgs_puan', e.target.value)} />
-                  </td>
-                  <td style={tdStyle}>
-                    % <input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={lgsData.lgs_genel_yuzdelik} onChange={e => handleLgsChange('lgs_genel_yuzdelik', e.target.value)} />
-                  </td>
-                  <td style={tdStyle}>
-                    % <input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={lgsData.lgs_il_yuzdelik} onChange={e => handleLgsChange('lgs_il_yuzdelik', e.target.value)} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', marginBottom: '1.5rem' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={{...thStyle, background:'#fffbeb', color:'#92400e'}}>LGS HEDEF PUANI (500 ÜZERİNDEN)</th>
+                    <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>GENEL YÜZDELİK DİLİM HEDEFİ</th>
+                    <th style={{...thStyle, background:'#ecfdf5', color:'#065f46'}}>İL YÜZDELİK DİLİM HEDEFİ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdStyle}>
+                      <input type="number" step="0.01" style={{...inputStyle, maxWidth:'120px', fontSize:'1.1rem', color:'#d97706'}} disabled={readOnly} value={lgsData.lgs_puan} onChange={e => handleLgsChange('lgs_puan', e.target.value)} />
+                    </td>
+                    <td style={tdStyle}>
+                      % <input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={lgsData.lgs_genel_yuzdelik} onChange={e => handleLgsChange('lgs_genel_yuzdelik', e.target.value)} />
+                    </td>
+                    <td style={tdStyle}>
+                      % <input type="number" step="0.01" style={{...inputStyle, maxWidth:'90px', fontWeight:800, color:'#059669'}} disabled={readOnly} value={lgsData.lgs_il_yuzdelik} onChange={e => handleLgsChange('lgs_il_yuzdelik', e.target.value)} />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

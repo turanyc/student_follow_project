@@ -129,7 +129,7 @@ const MoodAnalysis = () => {
           <p className="text-muted">Her gün açılan "Bugün Nasılsın?" modalından duygunuzu girin.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
 
           {/* Ana durum */}
           <div className="card glass-panel" style={{
@@ -144,9 +144,9 @@ const MoodAnalysis = () => {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               Bugünkü durumun
             </p>
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
               {Object.entries(MOOD_CONFIG).map(([id, m]) => (
-                <div key={id} style={{ textAlign: 'center', opacity: lastMood === id ? 1 : 0.35 }}>
+                <div key={id} style={{ textAlign: 'center', opacity: lastMood === id ? 1 : 0.35, flex: '1 1 45px' }}>
                   <p style={{ fontSize: '1.5rem', margin: 0 }}>{m.emoji}</p>
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: 0 }}>{m.label}</p>
                 </div>
@@ -188,11 +188,12 @@ const MoodAnalysis = () => {
             {distribution.length === 0 ? (
               <p className="text-muted">Yeterli veri yok.</p>
             ) : (
-              <div style={{ height: 250 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={distribution} cx="50%" cy="50%" innerRadius={60} outerRadius={90}
+                    <Pie data={distribution} cx="50%" cy="50%" innerRadius={48} outerRadius={72}
                       paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} %${Math.round(percent * 100)}`}
+                      labelStyle={{ fontSize: 11, fontWeight: 700, fill: 'var(--text-main)' }}
                       labelLine={false}>
                       {distribution.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Save, ArrowLeft, User, Phone, BookOpen, Target, Shield, CheckCircle } from 'lucide-react';
+import { Camera, Save, ArrowLeft, User, Phone, BookOpen, Target, Shield, CheckCircle, Award, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
@@ -20,6 +20,9 @@ const Profile = () => {
   const [examType, setExamType] = useState('yks'); // 'yks' or 'lgs'
   const [targetSchool, setTargetSchool] = useState('');
   const [bio, setBio] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+
+  const [osymTargetData, setOsymTargetData] = useState(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -32,11 +35,65 @@ const Profile = () => {
         setExamType(data.examType || 'yks');
         setTargetSchool(data.targetSchool || '');
         setBio(data.bio || '');
+        setPhotoURL(data.photoURL || '');
       }
       setLoading(false);
     });
-    return () => unsub();
+
+    const unsubTarget = onSnapshot(doc(db, 'users', currentUser.uid, 'osymTarget', 'targetData'), (snap) => {
+      if (snap.exists()) {
+        setOsymTargetData(snap.data());
+      } else {
+        setOsymTargetData(null);
+      }
+    });
+
+    return () => { unsub(); unsubTarget(); };
   }, [currentUser]);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Dosya Çok Büyük!',
+        text: 'Profil fotoğrafı maksimum 2 MB boyutunda olmalıdır.'
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 320;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > MAX_DIM) {
+            h = Math.round((h * MAX_DIM) / w);
+            w = MAX_DIM;
+          }
+        } else {
+          if (h > MAX_DIM) {
+            w = Math.round((w * MAX_DIM) / h);
+            h = MAX_DIM;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setPhotoURL(compressedDataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -49,6 +106,7 @@ const Profile = () => {
         examType: examType,
         targetSchool: targetSchool.trim(),
         bio: bio.trim(),
+        photoURL: photoURL || null,
         updatedAt: new Date().toISOString()
       });
       Swal.fire({
@@ -91,13 +149,60 @@ const Profile = () => {
       <div className="card glass-panel" style={{ padding: '2.5rem', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ 
-              width: '90px', height: '90px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '2.2rem', fontWeight: 800, boxShadow: '0 8px 25px rgba(99,102,241,0.3)'
-            }}>
-              {name ? name[0].toUpperCase() : 'U'}
+            <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
+              <div style={{ 
+                width: '96px', height: '96px', borderRadius: '50%',
+                background: photoURL ? '#ffffff' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2.4rem', fontWeight: 800, boxShadow: '0 8px 25px rgba(99,102,241,0.3)',
+                overflow: 'hidden', border: '3px solid #e0e7ff'
+              }}>
+                {photoURL ? (
+                  <img src={photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span>{name ? name[0].toUpperCase() : 'U'}</span>
+                )}
+              </div>
+              <label 
+                htmlFor="profilePhotoInput"
+                style={{
+                  position: 'absolute', bottom: 0, right: 0,
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: '#6366f1', color: 'white', border: '2px solid white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', transition: 'transform 0.2s',
+                  zIndex: 2
+                }}
+                title="Fotoğraf Değiştir (Maksimum 2 MB)"
+                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <Camera size={16} />
+                <input 
+                  id="profilePhotoInput" 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handlePhotoChange} 
+                  style={{ display: 'none' }} 
+                />
+              </label>
+              {photoURL && (
+                <button
+                  type="button"
+                  onClick={() => setPhotoURL('')}
+                  style={{
+                    position: 'absolute', top: 0, right: 0,
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: '#ef4444', color: 'white', border: '2px solid white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)', zIndex: 2
+                  }}
+                  title="Fotoğrafı Kaldır"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div>
               <h2 style={{ margin: '0 0 0.3rem', fontSize: '1.6rem', color: '#1e293b' }}>{name || 'Kullanıcı'}</h2>
@@ -213,18 +318,76 @@ const Profile = () => {
             </div>
           )}
 
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#334155' }}>
-              <Shield size={16} color="#f59e0b" /> Hakkımda / Motivasyon Sözü
-            </label>
-            <textarea 
-              className="input-field" 
-              rows="3" 
-              placeholder="Kendinizi tanıtın veya bu seneki motivasyon cümlenizi yazın..."
-              style={{ resize: 'vertical' }}
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-            />
+          {/* Sol alt blok ve Sağ alt blok: ÖSYM Hedefi & Motivasyon Sözü */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'stretch' }}>
+            {/* Sol Alt Blok: ÖSYM & MEB Hedef Özeti */}
+            {userData?.role === 'student' && (
+              <div style={{
+                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                border: '1.5px solid #fde68a', borderRadius: 16, padding: '1.25rem',
+                display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b45309', fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.6rem' }}>
+                    <Award size={18} color="#d97706" /> ÖSYM / MEB Hedef Kartım
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#92400e', lineHeight: 1.5 }}>
+                    {osymTargetData ? (
+                      examType === 'lgs' ? (
+                        <>
+                          <strong style={{ display: 'block', fontSize: '1.1rem', color: '#78350f', margin: '0.2rem 0' }}>
+                            {osymTargetData.lgs?.lgs_puan ? `${osymTargetData.lgs.lgs_puan} Puan` : 'Hedef Belirlendi'}
+                          </strong>
+                          Hedef Net: {(() => {
+                            const l = osymTargetData.lgs || {};
+                            return (Number(l.lgs_turkce_d||0) - Number(l.lgs_turkce_y||0)/3 + Number(l.lgs_mat_d||0) - Number(l.lgs_mat_y||0)/3 + Number(l.lgs_fen_d||0) - Number(l.lgs_fen_y||0)/3 + Number(l.lgs_inkilap_d||0) - Number(l.lgs_inkilap_y||0)/3 + Number(l.lgs_ing_d||0) - Number(l.lgs_ing_y||0)/3 + Number(l.lgs_din_d||0) - Number(l.lgs_din_y||0)/3).toFixed(1);
+                          })()} Net (LGS)
+                        </>
+                      ) : (
+                        <>
+                          <strong style={{ display: 'block', fontSize: '1.1rem', color: '#78350f', margin: '0.2rem 0' }}>
+                            {osymTargetData.yks?.say_puan ? `Sayısal: ${osymTargetData.yks.say_puan} Puan` : osymTargetData.yks?.ea_puan ? `EA: ${osymTargetData.yks.ea_puan} Puan` : 'YKS Hedefi Yapılandırıldı'}
+                          </strong>
+                          TYT Hedef Net: {(() => {
+                            const y = osymTargetData.yks || {};
+                            return (Number(y.tyt_turkce_d||0) - Number(y.tyt_turkce_y||0)/4 + Number(y.tyt_mat_d||0) - Number(y.tyt_mat_y||0)/4 + Number(y.tyt_fen_d||0) - Number(y.tyt_fen_y||0)/4 + Number(y.tyt_sosyal_d||0) - Number(y.tyt_sosyal_y||0)/4).toFixed(1);
+                          })()} Net
+                        </>
+                      )
+                    ) : (
+                      'ÖSYM / MEB hedef net ve puan tablonuz henüz oluşturulmamış.'
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/student/osym-target')}
+                  style={{
+                    marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: 10,
+                    background: 'white', border: '1px solid #f59e0b', color: '#b45309',
+                    fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                    boxShadow: '0 2px 6px rgba(245,158,11,0.1)'
+                  }}
+                >
+                  <BarChart2 size={15} /> Hedef Tablom'u Düzenle ➔
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#334155' }}>
+                <Shield size={16} color="#f59e0b" /> Hakkımda / Motivasyon Sözü
+              </label>
+              <textarea 
+                className="input-field" 
+                rows="5" 
+                placeholder="Kendinizi tanıtın veya bu seneki motivasyon cümlenizi yazın..."
+                style={{ resize: 'vertical', height: '100%', minHeight: '130px' }}
+                value={bio}
+                onChange={e => setBio(e.target.value)}
+              />
+            </div>
           </div>
 
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>

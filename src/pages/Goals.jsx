@@ -212,7 +212,7 @@ const Goals = () => {
         {/* ---- HEDEFLER ---- */}
         {activeTab === 'goals' && (
           <motion.div key="goals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
 
               {/* Add Goal Form */}
               <div className="card" style={{ padding: '1.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: 20, alignSelf: 'start' }}>
@@ -323,7 +323,7 @@ const Goals = () => {
         {/* ---- KAYNAKLAR ---- */}
         {activeTab === 'resources' && (
           <motion.div key="resources" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
               
               {/* Add Resource Form */}
               <div className="card" style={{ padding: '1.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: 20, alignSelf: 'start' }}>
@@ -424,15 +424,21 @@ const Goals = () => {
           <motion.div key="questions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             
             {/* Top Stat Banner */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-              <div className="card" style={{ padding: '2rem', background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)', color: 'white', borderRadius: 24, textAlign: 'center', boxShadow: '0 10px 25px rgba(79,70,229,0.3)' }}>
-                <p style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.9, margin: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div className="card" style={{ padding: '2.2rem 1.5rem', background: 'white', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 24, textAlign: 'center', boxShadow: '0 10px 30px rgba(139,92,246,0.08)' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', margin: 0 }}>
                   TOPLAM ÇÖZÜLEN SORU SAYISI
                 </p>
-                <p style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0.5rem 0 0', fontFamily: 'monospace', letterSpacing: '-0.03em' }}>
+                <p style={{
+                  fontSize: '3.8rem', fontWeight: 900, margin: '0.5rem 0 0', fontFamily: 'monospace', letterSpacing: '-0.03em',
+                  background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  display: 'inline-block'
+                }}>
                   {questionCount.toLocaleString('tr-TR')}
                 </p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', opacity: 0.8 }}>Zirveye doğru adım adım!</p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>Zirveye doğru adım adım!</p>
               </div>
 
               {/* Add Question Card */}
@@ -487,7 +493,7 @@ const Goals = () => {
             </div>
 
             {/* Recent Solved History & Milestones */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
               
               {/* History */}
               <div className="card" style={{ padding: '1.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: 20 }}>

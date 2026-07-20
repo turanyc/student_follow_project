@@ -52,13 +52,13 @@ const DailyMoodModal = () => {
     { id: 'stressed', emoji: '😫', label: 'Stresli', color: '#ef4444' },
   ];
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+      {isOpen && (
+        <motion.div
+          key="mood-modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -144,6 +144,7 @@ const DailyMoodModal = () => {
           )}
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };

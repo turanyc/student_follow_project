@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Kullanıcı kendi profilini okuyabilir/yazabilir, herkes okuyabilir (koç için)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Alt koleksiyonlar: kendi kullanıcısı yazabilir, giriş yapan herkes okuyabilir
+      match /{subcollection}/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Events: herkes okuyabilir, giriş yapan herkes yazabilir
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Messages: giriş yapan herkes okuyabilir/yazabilir
+    match /messages/{msgId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Appointment requests: giriş yapan herkes okuyabilir/yazabilir
+    match /appointmentRequests/{reqId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

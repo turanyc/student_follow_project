@@ -91,7 +91,7 @@ const Planner = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '2rem' }}>
         
         {/* Task List */}
         <div className="card glass-panel" style={{ minHeight: '500px' }}>
@@ -176,9 +176,19 @@ const Planner = () => {
             <p style={{ margin: 0, color: 'var(--text-muted)' }}>{completedCount} / {tasks.length} Görev Tamamlandı</p>
           </div>
 
-          <div className="card glass-panel" style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none' }}>
-            <h3><TrendingUp size={20} style={{ verticalAlign: 'middle' }}/> Hedef İstatistiği</h3>
-            <p style={{ color: 'rgba(255,255,255,0.8)' }}>Bu hafta hedeflerine %15 daha yaklaştın. Hızını kesme, ağacın büyüyor!</p>
+          <div className="card glass-panel" style={{ background: '#1e7796', color: 'white', border: 'none', boxShadow: '0 8px 24px rgba(30, 119, 150, 0.25)' }}>
+            <h3 style={{ color: '#ffd48d', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}><TrendingUp size={20} /> Hedef İstatistiği</h3>
+            <p style={{ color: 'rgba(255,255,255,0.95)', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+              {tasks.length > 0 ? (
+                completedCount > 0 ? (
+                  `Bu hafta hedeflerinin %${Math.round((completedCount / tasks.length) * 100)} kısmını başarıyla tamamladın. Hızını kesme, ağacın büyüyor ve kök salıyor!`
+                ) : (
+                  'Henüz bu haftaki görevlerinden tamamladığın bulunmuyor. İlk görevini tamamlayarak hedeflerine hızla yaklaş ve ağacını yeşert!'
+                )
+              ) : (
+                'Şu anda listelenecek bir görevin bulunmuyor. Yeni görevler ekleyerek haftalık ilerleme yüzdeni canlı olarak artırıp ağacını besleyebilirsin!'
+              )}
+            </p>
           </div>
         </div>
       </div>

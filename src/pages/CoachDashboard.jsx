@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Users, Calendar, MessageSquare, Video, LogOut, PlusCircle,
-  Target, Heart, TrendingUp, Phone, Clock, Send, Check, X, ChevronDown, ChevronUp, Bell
+  Users, Calendar, MessageSquare, Video, LogOut, PlusCircle, Search,
+  Target, Heart, TrendingUp, Phone, Clock, Send, Check, X, ChevronDown, ChevronUp, Bell, Menu,
+  CheckCircle, XCircle, Zap, BookOpen, BarChart2, Sparkles, AlertCircle, Award, Trophy, PenTool, Flame, ShieldAlert,
+  CheckSquare, Layers
 } from 'lucide-react';
 import Analytics from './Analytics';
 import { useNavigate } from 'react-router-dom';
@@ -9,11 +11,13 @@ import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import {
   collection, query, where, onSnapshot,
-  doc, updateDoc, addDoc, serverTimestamp, orderBy, getDocs, limit
+  doc, setDoc, updateDoc, addDoc, serverTimestamp, orderBy, getDocs, limit
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Swal from 'sweetalert2';
 import { getTreeLevel } from '../components/TreeWidget';
+import StudyHeatmapCalendar from '../components/StudyHeatmapCalendar';
+import { getTopicsForExam, getSubTabsForExam, groupTopicsBySubject, findSubjectOfTopic } from '../data/curriculumData';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const MOOD_CONFIG = {
@@ -43,11 +47,11 @@ const timeAgo = (ts) => {
 };
 
 // ── Nav button ──────────────────────────────────────────────────────────────
-const NavBtn = ({ active, onClick, icon: Icon, label, badge }) => (
-  <button onClick={onClick} className={`sidebar-nav-btn ${active ? 'active' : ''}`}>
-    <Icon size={16} /> {label}
+const CoachTabBtn = ({ active, onClick, icon: Icon, label, badge }) => (
+  <button onClick={onClick} className={`coach-tab-btn ${active ? 'active' : ''}`}>
+    <Icon size={15} /> {label}
     {badge > 0 && (
-      <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>
+      <span style={{ marginLeft: '0.2rem', background: '#ef4444', color: 'white', fontSize: '0.6rem', fontWeight: 800, borderRadius: '50%', width: 17, height: 17, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>
     )}
   </button>
 );
@@ -57,6 +61,8 @@ const CoachDashboard = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('feed');   // feed | students | goals | moods | analytics | events | appointments | messages
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   const [students, setStudents]           = useState([]);
   const [events, setEvents]               = useState([]);
@@ -73,6 +79,9 @@ const CoachDashboard = () => {
   const [studentSolvedQuestions, setStudentSolvedQuestions] = useState({});
   const [studentResources, setStudentResources]             = useState({});
   const [studentOsymTargets, setStudentOsymTargets]         = useState({});
+  const [studentCurriculum, setStudentCurriculum]           = useState({});
+  const [coachCurriculumGroup, setCoachCurriculumGroup]     = useState({});
+  const [coachCurriculumSubTab, setCoachCurriculumSubTab]   = useState({});
   const [selectedTrialModal, setSelectedTrialModal]         = useState(null);
   const [studentTab, setStudentTab]                         = useState({});
   const [recommendations, setRecommendations] = useState({});
@@ -91,11 +100,86 @@ const CoachDashboard = () => {
   // Activity feed
   const [activityItems, setActivityItems] = useState([]);
 
+  const handleCreateDemoData = async () => {
+    Swal.fire({
+      title: 'Örnek Veriler Yükleniyor...',
+      text: 'Veritabanına örnek öğrenciler, deneme sınavları ve çalışma kayıtları ekleniyor.',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    const sampleStudentsData = [
+      {
+        id: 'demo-student-1',
+        name: 'Efe Yılmaz',
+        email: 'efe.yilmaz@ogrenci.com',
+        phone: '0532 111 22 33',
+        examType: 'yks',
+        role: 'student',
+        status: 'studying',
+        coachId: currentUser?.uid || 'demo-coach',
+        totalStudyHours: 48.5,
+        treePoints: 480,
+        currentMood: 'great',
+        createdAt: new Date(Date.now() - 10 * 86400000).toISOString()
+      },
+      {
+        id: 'demo-student-2',
+        name: 'Zeynep Kaya',
+        email: 'zeynep.kaya@ogrenci.com',
+        phone: '0533 444 55 66',
+        examType: 'lgs',
+        role: 'student',
+        status: 'not-studying',
+        coachId: currentUser?.uid || 'demo-coach',
+        totalStudyHours: 32.0,
+        treePoints: 340,
+        currentMood: 'excited',
+        createdAt: new Date(Date.now() - 15 * 86400000).toISOString()
+      }
+    ];
+
+    try {
+      for (const s of sampleStudentsData) {
+        await setDoc(doc(db, 'users', s.id), s, { merge: true });
+        await setDoc(doc(db, 'users', s.id, 'trialExams', 'exam-1'), {
+          title: s.examType === 'yks' ? 'ÖZDEBİR TYT-1' : 'LGS Genel Deneme 1',
+          date: new Date().toISOString().split('T')[0],
+          total: s.examType === 'yks' ? 84.5 : 78.0,
+          math: 32, turkish: 34, science: 10, social: 8.5,
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+        await setDoc(doc(db, 'users', s.id, 'studySessions', 'sess-1'), {
+          date: new Date().toISOString().split('T')[0],
+          durationMinutes: 120,
+          endedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Başarılı!',
+        text: 'Örnek veriler (etkinlikler, randevular ve koç tavsiyesi) eklendi.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      console.error('Demo veri oluşturma hatası:', err);
+      setStudents(sampleStudentsData);
+      Swal.fire({
+        icon: 'success',
+        title: 'Yerel Demo Yüklendi! ⚡',
+        text: 'Örnek veriler arayüze yansıtıldı.'
+      });
+    }
+  };
+
   // ── Load students & events & appointments ──────────────────────────────
   useEffect(() => {
     const unsubStudents = onSnapshot(
       query(collection(db, 'users'), where('role', '==', 'student')),
-      snap => setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      snap => setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      err => console.error('Öğrenciler alınamadı:', err)
     );
 
     const unsubEvents = onSnapshot(
@@ -104,12 +188,14 @@ const CoachDashboard = () => {
         const evs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         evs.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
         setEvents(evs);
-      }
+      },
+      err => console.error('Etkinlikler alınamadı:', err)
     );
 
     const unsubAppts = onSnapshot(
-      query(collection(db, 'appointmentRequests'), orderBy('requestedAt', 'desc')),
-      snap => setAppointmentRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      query(collection(db, 'appointmentRequests'), orderBy('requestedAt', 'desc'), limit(50)),
+      snap => setAppointmentRequests(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      err => console.error('Randevu talepleri alınamadı:', err)
     );
 
     return () => { unsubStudents(); unsubEvents(); unsubAppts(); };
@@ -144,8 +230,7 @@ const CoachDashboard = () => {
       try {
         const sessSnap = await getDocs(query(
           collection(db, 'users', s.id, 'studySessions'),
-          where('date', '==', today),
-          orderBy('endedAt', 'desc')
+          where('date', '==', today)
         ));
         let totalMins = 0;
         sessSnap.forEach(d => { totalMins += d.data().durationMinutes || 0; });
@@ -155,7 +240,7 @@ const CoachDashboard = () => {
             icon: '⏱', color: '#6366f1',
             text: `${s.name || s.email} bugün ${formatMins(totalMins)} çalıştı`,
             sub: `Toplam: ${(s.totalStudyHours || 0).toFixed(1)}sa`,
-            tag: getTreeLevel(totalMins / 60).icon + ' ' + getTreeLevel(totalMins / 60).label,
+            tag: getTreeLevel(totalMins / 60).label,
             tagColor: '#10b981',
           });
         }
@@ -173,10 +258,10 @@ const CoachDashboard = () => {
           if (ms > cutoff) {
             items.push({
               key: `exam-${d.id}`, ms,
-              icon: '📊', color: '#8b5cf6',
+              icon: 'exam', color: '#8b5cf6',
               text: `${s.name || s.email} deneme ekledi: ${data.title}`,
               sub: `Toplam net: ${data.total}`,
-              tag: data.total >= 80 ? '🔥 Harika' : data.total >= 50 ? '👍 İyi' : '📈 Gelişiyor',
+              tag: data.total >= 80 ? 'Harika' : data.total >= 50 ? 'İyi' : 'Gelişiyor',
               tagColor: data.total >= 80 ? '#ef4444' : data.total >= 50 ? '#10b981' : '#f59e0b',
             });
           }
@@ -195,7 +280,7 @@ const CoachDashboard = () => {
           if (ms > cutoff) {
             items.push({
               key: `topic-${d.id}`, ms,
-              icon: '✅', color: '#10b981',
+              icon: 'topic', color: '#10b981',
               text: `${s.name || s.email} konu tamamladı: ${data.topicTitle}`,
               sub: data.category || '',
               tag: data.exam || '',
@@ -255,10 +340,28 @@ const CoachDashboard = () => {
       snap => setStudentOsymTargets(p => ({ ...p, [sid]: snap.exists() ? snap.data() : null }))
     );
 
-    return () => { unsubExams(); unsubGoals(); unsubMood(); unsubSess(); unsubSq(); unsubRes(); unsubOsym(); };
-  }, [expandedStudent]);
+    const unsubCurriculum = onSnapshot(
+      doc(db, 'users', sid, 'settings', 'curriculumProgress'),
+      snap => setStudentCurriculum(p => ({ ...p, [sid]: snap.exists() ? (snap.data().checked || {}) : {} }))
+    );
+
+    // Set default exam group for coach view
+    const studentObj = students.find(s => s.id === sid);
+    const grp = studentObj?.examType === 'lgs' ? 'LGS' : (studentObj?.examType === 'kpss' ? 'KPSS' : 'YKS');
+    setCoachCurriculumGroup(p => ({ ...p, [sid]: p[sid] || grp }));
+    const defSub = grp === 'LGS' ? 'LGS' : (grp === 'KPSS' ? 'KPSS Lisans' : 'TYT');
+    setCoachCurriculumSubTab(p => ({ ...p, [sid]: p[sid] || defSub }));
+
+    return () => { unsubExams(); unsubGoals(); unsubMood(); unsubSess(); unsubSq(); unsubRes(); unsubOsym(); unsubCurriculum(); };
+  }, [expandedStudent, students]);
 
   // ── Chat ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'messages' && students.length > 0 && !selectedMsgStudent) {
+      setSelectedMsgStudent(students[0]);
+    }
+  }, [activeTab, students, selectedMsgStudent]);
+
   useEffect(() => {
     if (!currentUser || !selectedMsgStudent) return;
     const unsub = onSnapshot(
@@ -268,6 +371,8 @@ const CoachDashboard = () => {
         snap.forEach(d => {
           const data = d.data();
           if (
+            data.senderId === selectedMsgStudent.id ||
+            data.receiverId === selectedMsgStudent.id ||
             (data.senderId === currentUser.uid && data.receiverId === selectedMsgStudent.id) ||
             (data.senderId === selectedMsgStudent.id && data.receiverId === currentUser.uid)
           ) msgs.push({ id: d.id, ...data });
@@ -322,6 +427,9 @@ const CoachDashboard = () => {
       text, senderId: currentUser.uid, receiverId: selectedMsgStudent.id,
       senderRole: 'coach', createdAt: serverTimestamp()
     });
+    try {
+      await updateDoc(doc(db, 'users', selectedMsgStudent.id), { coachId: currentUser.uid });
+    } catch (_) {}
   };
 
   const handleSetAppointment = async (reqId) => {
@@ -344,71 +452,161 @@ const CoachDashboard = () => {
 
   // ── RENDER ────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh', background: '#f8fafc' }}>
 
-      {/* ── Sidebar ── */}
-      <div className="sidebar">
-        <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>🎯</div>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: 'white' }}>Koç Paneli</p>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>{currentUser?.email}</p>
-            </div>
-          </div>
+      {/* Responsive CSS styles for CoachDashboard */}
+      <style>{`
+        @media (max-width: 768px) {
+          .coach-messages-grid {
+            grid-template-columns: 1fr !important;
+            height: auto !important;
+          }
+          .coach-messages-grid > div:first-child {
+            max-height: 220px !important;
+          }
+          .coach-messages-grid > div:last-child {
+            height: 480px !important;
+          }
+        }
+      `}</style>
+
+      {/* ── Top Navbar ── */}
+      <div className="coach-topbar">
+        <div className="coach-topbar-logo" onClick={() => { navigate('/coach'); setActiveTab('feed'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'transform 0.2s', padding: '0.3rem 0.6rem', borderRadius: 14 }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} title="Ana Sayfaya Dön">
+          <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 62, width: 'auto', objectFit: 'contain' }} />
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', flex: 1, position: 'relative', zIndex: 1 }}>
-          <NavBtn active={activeTab==='feed'}         onClick={() => setActiveTab('feed')}         icon={Bell}         label="Aktivite Akışı" />
-          <NavBtn active={activeTab==='students'}     onClick={() => setActiveTab('students')}     icon={Users}        label="Öğrencilerim" />
-          <NavBtn active={activeTab==='goals'}        onClick={() => setActiveTab('goals')}        icon={Target}       label="Tüm Hedefler" />
-          <NavBtn active={activeTab==='moods'}        onClick={() => setActiveTab('moods')}        icon={Heart}        label="Duygu Durumları" />
-          <NavBtn active={activeTab==='analytics'}    onClick={() => setActiveTab('analytics')}    icon={TrendingUp}   label="Deneme Grafikleri" />
-          <NavBtn active={activeTab==='events'}       onClick={() => setActiveTab('events')}       icon={Calendar}     label="Etkinlikler" />
-          <NavBtn active={activeTab==='appointments'} onClick={() => setActiveTab('appointments')} icon={Phone}        label="Görüşme Talepleri" badge={pendingRequests.length} />
-          <NavBtn active={activeTab==='messages'}     onClick={() => setActiveTab('messages')}     icon={MessageSquare}label="Mesajlar" />
-          <div className="sidebar-divider" />
-          <NavBtn active={false} onClick={() => navigate('/video-call')} icon={Video} label="Görüşmeler" />
+        <nav className="coach-topbar-nav">
+          <CoachTabBtn active={activeTab==='feed'}         onClick={() => setActiveTab('feed')}         icon={Bell}         label="Aktivite" />
+          <CoachTabBtn active={activeTab==='students'}     onClick={() => setActiveTab('students')}     icon={Users}        label="Öğrenciler" />
+          <CoachTabBtn active={activeTab==='goals'}        onClick={() => setActiveTab('goals')}        icon={Target}       label="Hedefler" />
+          <CoachTabBtn active={activeTab==='moods'}        onClick={() => setActiveTab('moods')}        icon={Heart}        label="Duygular" />
+          <CoachTabBtn active={activeTab==='analytics'}    onClick={() => setActiveTab('analytics')}    icon={TrendingUp}   label="Analiz" />
+          <CoachTabBtn active={activeTab==='events'}       onClick={() => setActiveTab('events')}       icon={Calendar}     label="Etkinlikler" />
+          <CoachTabBtn active={activeTab==='appointments'} onClick={() => setActiveTab('appointments')} icon={Phone}        label="Randevular" badge={pendingRequests.length} />
+          <CoachTabBtn active={activeTab==='messages'}     onClick={() => setActiveTab('messages')}     icon={MessageSquare}label="Mesajlar" />
+          <CoachTabBtn active={false} onClick={() => navigate('/video-call')} icon={Video} label="Görüşme" />
         </nav>
 
-        <div style={{ position: 'relative', zIndex: 1, marginTop: '0.5rem' }}>
+        <div className="coach-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <button onClick={handleLogout} style={{
-            display: 'flex', alignItems: 'center', gap: '0.65rem',
-            padding: '0.6rem 0.875rem', borderRadius: 10, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.5rem 1rem', borderRadius: 10, cursor: 'pointer',
             border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)',
-            color: '#fca5a5', fontWeight: 600, fontSize: '0.875rem',
-            width: '100%', justifyContent: 'flex-start', fontFamily: 'Outfit, sans-serif',
+            color: '#fca5a5', fontWeight: 600, fontSize: '0.82rem',
+            fontFamily: 'Outfit, sans-serif',
           }}>
-            <LogOut size={16} /> Çıkış Yap
+            <LogOut size={15} /> Çıkış
+          </button>
+          <button className="hamburger-btn coach-mobile-hamburger" style={{ display: 'none' }} onClick={() => setIsMobileMenuOpen(true)} aria-label="Menüyü Aç">
+            <Menu size={24} />
           </button>
         </div>
       </div>
 
+      {/* ── Coach Mobile Drawer Overlay ── */}
+      {isMobileMenuOpen && (
+        <div className="mobile-drawer-overlay" onClick={() => setIsMobileMenuOpen(false)}>
+          <div className="mobile-drawer-content" style={{ background: '#ffffff', color: '#0f172a' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1.25rem', borderBottom: '1px solid var(--sidebar-border)', marginBottom: '1rem' }}>
+              <div onClick={() => { setIsMobileMenuOpen(false); navigate('/coach'); setActiveTab('feed'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0.3rem 0.5rem', borderRadius: 12 }}>
+                <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 60, width: 'auto', objectFit: 'contain' }} />
+              </div>
+              <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'rgba(30,119,150,0.1)', border: 'none', color: '#0f172a', padding: '0.4rem', borderRadius: 8, cursor: 'pointer', display: 'flex' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+              {[
+                { id: 'feed',         icon: Bell,          label: 'Aktivite' },
+                { id: 'students',     icon: Users,         label: 'Öğrenciler' },
+                { id: 'goals',        icon: Target,        label: 'Hedefler' },
+                { id: 'moods',        icon: Heart,         label: 'Duygular' },
+                { id: 'analytics',    icon: TrendingUp,    label: 'Analiz' },
+                { id: 'events',       icon: Calendar,      label: 'Etkinlikler' },
+                { id: 'appointments', icon: Phone,         label: 'Randevular', badge: pendingRequests.length },
+                { id: 'messages',     icon: MessageSquare, label: 'Mesajlar' },
+              ].map(t => {
+                const IconComp = t.icon;
+                return (
+                  <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); }}
+                    className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}>
+                    <IconComp size={16} /> {t.label}
+                    {t.badge > 0 && (
+                      <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{t.badge}</span>
+                    )}
+                  </button>
+                );
+              })}
+              <div className="sidebar-divider" />
+              <button onClick={() => { setIsMobileMenuOpen(false); navigate('/video-call'); }} className="sidebar-nav-btn">
+                <Video size={16} /> Görüşmeler
+              </button>
+            </nav>
+
+            <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+              <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.65rem',
+                  padding: '0.6rem 0.875rem', borderRadius: 10, cursor: 'pointer',
+                  border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)',
+                  color: '#fca5a5', fontWeight: 600, fontSize: '0.875rem',
+                  width: '100%', justifyContent: 'flex-start', fontFamily: 'Outfit, sans-serif',
+                }}>
+                <LogOut size={16} /> Çıkış
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Main Content ── */}
-      <div className="main-content">
+      <div className="main-content" style={{ minHeight: 'calc(100vh - 65px)' }}>
 
         {/* ---- AKTİVİTE AKIŞI (Coach Home) ---- */}
         {activeTab === 'feed' && (
           <div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h1 style={{ marginBottom: '0.25rem' }}>Aktivite Akışı</h1>
-              <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0 }}>Son 48 saatte öğrencilerin yaptıkları değişiklikler ve aktiviteler</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h1 style={{ marginBottom: '0.25rem' }}>Aktivite Akışı</h1>
+                <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0 }}>Son 48 saatte öğrencilerin yaptıkları değişiklikler ve aktiviteler</p>
+              </div>
+              <button
+                onClick={handleCreateDemoData}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.7rem 1.15rem', borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
+                  fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 15px rgba(16,185,129,0.35)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Zap size={16} /> <span>Örnek Verileri Veritabanına Yükle</span>
+              </button>
             </div>
 
             {/* Quick stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
               {[
-                { label: 'Toplam Öğrenci', value: students.length, icon: '👥', color: '#6366f1' },
-                { label: 'Çalışan Öğrenci', value: students.filter(s => s.status === 'studying').length, icon: '📚', color: '#10b981' },
-                { label: 'Bekleyen Talep', value: pendingRequests.length, icon: '📅', color: '#f59e0b' },
-                { label: 'Son 48sa Aktivite', value: activityItems.length, icon: '⚡', color: '#8b5cf6' },
-              ].map(stat => (
-                <div key={stat.label} className="card" style={{ textAlign: 'center', padding: '1rem', border: `1px solid ${stat.color}20` }}>
-                  <p style={{ margin: 0, fontSize: '1.5rem' }}>{stat.icon}</p>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '1.6rem', fontWeight: 800, color: stat.color }}>{stat.value}</p>
-                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>{stat.label}</p>
-                </div>
-              ))}
+                { label: 'Toplam Öğrenci', value: students.length, icon: Users, color: '#6366f1' },
+                { label: 'Çalışan Öğrenci', value: students.filter(s => s.status === 'studying').length, icon: BookOpen, color: '#10b981' },
+                { label: 'Bekleyen Talep', value: pendingRequests.length, icon: Calendar, color: '#f59e0b' },
+                { label: 'Son 48sa Aktivite', value: activityItems.length, icon: Zap, color: '#8b5cf6' },
+              ].map(stat => {
+                const StatIcon = stat.icon;
+                return (
+                  <div key={stat.label} className="card" style={{ textAlign: 'center', padding: '1rem', border: `1px solid ${stat.color}20` }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${stat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <StatIcon size={20} color={stat.color} />
+                      </div>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '1.6rem', fontWeight: 800, color: stat.color }}>{stat.value}</p>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>{stat.label}</p>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Activity list */}
@@ -457,12 +655,74 @@ const CoachDashboard = () => {
         )}
 
         {/* ---- ÖĞRENCİLER ---- */}
+        {/* ---- ÖĞRENCİLER ---- */}
         {activeTab === 'students' && (
           <div>
-            <h1 style={{ marginBottom: '1.5rem' }}>Öğrencilerim</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h1 style={{ margin: 0 }}>Öğrencilerim</h1>
+                <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0.2rem 0 0' }}>Öğrencileri adıyla arayabilir, çalışma durumlarını ve netlerini anlık inceleyebilirsiniz.</p>
+              </div>
+              <button
+                onClick={handleCreateDemoData}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.7rem 1.15rem', borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white',
+                  fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 15px rgba(99,102,241,0.35)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Zap size={16} /> <span>Örnek Öğrenci & Veri Ekle</span>
+              </button>
+            </div>
+
+            {/* Arama Çubuğu */}
+            <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+              <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                value={studentSearchQuery}
+                onChange={e => setStudentSearchQuery(e.target.value)}
+                placeholder="Öğrenci adı veya e-posta adresi yazarak anında arayın..."
+                style={{
+                  width: '100%', padding: '0.85rem 1rem 0.85rem 2.85rem', borderRadius: 12,
+                  border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a',
+                  fontSize: '0.95rem', outline: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                  transition: 'border-color 0.2s'
+                }}
+              />
+              {studentSearchQuery && (
+                <button onClick={() => setStudentSearchQuery('')} style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {students.length === 0 && <p style={{ color: '#94a3b8' }}>Henüz kayıtlı öğrenci yok.</p>}
-              {students.map(student => {
+              {students.length === 0 && (
+                <div className="card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.15)' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '1rem', marginBottom: '1rem' }}>Henüz veritabanında kayıtlı öğrenci bulunamadı.</p>
+                  <button
+                    onClick={handleCreateDemoData}
+                    style={{
+                      padding: '0.85rem 1.5rem', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
+                      fontWeight: 800, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem'
+                    }}
+                  >
+                    <Zap size={18} /> Örnek Öğrencileri ve Verileri Şimdi Oluştur
+                  </button>
+                </div>
+              )}
+              {students.length > 0 && students.filter(s => (s.name || s.email || '').toLowerCase().includes(studentSearchQuery.trim().toLowerCase())).length === 0 && (
+                <div className="card" style={{ padding: '2.5rem', textAlign: 'center', background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                  <Search size={36} style={{ color: '#94a3b8', marginBottom: '0.75rem' }} />
+                  <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.3rem' }}>Aradığınız kriterde öğrenci bulunamadı</p>
+                  <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>"{studentSearchQuery}" ile eşleşen bir öğrenci kaydı yok. Arama kelimesini değiştirebilirsiniz.</p>
+                </div>
+              )}
+              {students.filter(s => (s.name || s.email || '').toLowerCase().includes(studentSearchQuery.trim().toLowerCase())).map(student => {
                 const isExpanded = expandedStudent === student.id;
                 const exams = studentExams[student.id] || [];
                 const mood = student.currentMood ? MOOD_CONFIG[student.currentMood] : null;
@@ -474,27 +734,27 @@ const CoachDashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                       onClick={() => setExpandedStudent(isExpanded ? null : student.id)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                          {(student.name || student.email)?.[0]?.toUpperCase()}
+                        <div style={{ width: 42, height: 42, borderRadius: '50%', background: student.photoURL ? 'transparent' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: 'white', flexShrink: 0, overflow: 'hidden', border: student.photoURL ? '2px solid #e0e7ff' : 'none' }}>
+                          {student.photoURL ? <img src={student.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (student.name || student.email)?.[0]?.toUpperCase()}
                         </div>
                         <div>
                           <h3 style={{ margin: 0, fontSize: '1rem', color: '#1e293b' }}>{student.name || student.email}</h3>
                           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
-                            <span className={`status-badge ${student.status === 'studying' ? 'status-studying' : 'status-not-studying'}`}>
-                              {student.status === 'studying' ? '📚 Çalışıyor' : '💤 Çalışmıyor'}
+                            <span className={`status-badge ${student.status === 'studying' ? 'status-studying' : 'status-not-studying'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                              {student.status === 'studying' ? <>Çalışıyor <BookOpen size={13} /></> : <>Çalışmıyor <Clock size={13} /></>}
                             </span>
                             <span style={{ fontSize: '0.72rem', background: tree.level >= 4 ? 'rgba(245,158,11,0.18)' : 'rgba(16,185,129,0.1)', color: tree.level >= 4 ? '#d97706' : '#059669', padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 800 }}>
-                              {tree.icon} Seviye {tree.level}: {tree.label} {tree.level >= 4 ? '✨ (Ulu / Efsanevi)' : ''}
+                              Seviye {tree.level}: {tree.label}
                             </span>
                             {isExpanded && todayMins > 0 && (
-                              <span style={{ fontSize: '0.72rem', background: 'rgba(99,102,241,0.1)', color: '#6366f1', padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700 }}>
-                                ⏱ Bugün: {formatMins(todayMins)}
+                              <span style={{ fontSize: '0.72rem', background: 'rgba(99,102,241,0.1)', color: '#6366f1', padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <Clock size={12} /> Bugün: {formatMins(todayMins)}
                               </span>
                             )}
-                            <span style={{ fontSize: '0.72rem', background: 'rgba(245,158,11,0.1)', color: '#d97706', padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700 }}>
-                              📊 Toplam: {(student.totalStudyHours || 0).toFixed(1)}sa
+                            <span style={{ fontSize: '0.72rem', background: 'rgba(245,158,11,0.1)', color: '#d97706', padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <BarChart2 size={12} /> Toplam: {(student.totalStudyHours || 0).toFixed(1)}sa
                             </span>
-                            {mood && <span style={{ fontSize: '0.72rem', background: `${mood.color}15`, color: mood.color, padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700 }}>{mood.emoji} {mood.label}</span>}
+                            {mood && <span style={{ fontSize: '0.72rem', background: `${mood.color}15`, color: mood.color, padding: '0.15rem 0.5rem', borderRadius: 12, fontWeight: 700 }}>{mood.label}</span>}
                           </div>
                         </div>
                       </div>
@@ -514,14 +774,16 @@ const CoachDashboard = () => {
                         {/* Sub nav */}
                         <div style={{ display: 'flex', gap: '0.4rem', background: '#f8fafc', padding: '0.4rem', borderRadius: 12, marginBottom: '1.25rem', overflowX: 'auto', border: '1px solid #e2e8f0' }}>
                           {[
-                            { id: 'overview', label: '📊 Genel & Ağaç' },
-                            { id: 'exams', label: '📝 Deneme & ÖSYM' },
-                            { id: 'questions', label: '📈 Çözülen Sorular' },
-                            { id: 'goals', label: '🎯 Hedefler & Görevler' },
-                            { id: 'resources', label: '📚 Kaynaklar' },
-                            { id: 'moods', label: '💭 Duygu & Tavsiye' }
+                            { id: 'overview', label: 'Genel & Ağaç', icon: BarChart2 },
+                            { id: 'calendar', label: 'Çalışma & Isı Haritası', icon: Calendar },
+                            { id: 'exams', label: 'Deneme & ÖSYM', icon: PenTool },
+                            { id: 'questions', label: 'Çözülen Sorular', icon: TrendingUp },
+                            { id: 'goals', label: 'Hedefler & Görevler', icon: Target },
+                            { id: 'resources', label: 'Kaynaklar', icon: BookOpen },
+                            { id: 'moods', label: 'Duygu & Tavsiye', icon: Heart }
                           ].map(t => {
                             const cur = studentTab[student.id] || 'overview';
+                            const TabIcon = t.icon;
                             return (
                               <button key={t.id} onClick={e => { e.stopPropagation(); setStudentTab(p => ({ ...p, [student.id]: t.id })); }}
                                 style={{
@@ -530,9 +792,9 @@ const CoachDashboard = () => {
                                   color: cur === t.id ? 'white' : '#64748b',
                                   fontWeight: cur === t.id ? 700 : 600, fontSize: '0.82rem', whiteSpace: 'nowrap',
                                   boxShadow: cur === t.id ? '0 2px 8px rgba(99,102,241,0.25)' : 'none',
-                                  transition: 'all 0.2s', fontFamily: 'Outfit, sans-serif'
+                                  transition: 'all 0.2s', fontFamily: 'Outfit, sans-serif', display: 'inline-flex', alignItems: 'center', gap: '0.35rem'
                                 }}>
-                                {t.label}
+                                <TabIcon size={14} /> {t.label}
                               </button>
                             );
                           })}
@@ -545,7 +807,7 @@ const CoachDashboard = () => {
                               {[
                                 { label: 'Bugünün Süresi', value: formatMins(todayMins), color: '#10b981' },
                                 { label: 'Toplam Çalışma', value: `${(student.totalStudyHours || 0).toFixed(1)}sa`, color: '#6366f1' },
-                                { label: 'Ağaç Formu', value: `${tree.icon} ${tree.label}`, color: '#059669' },
+                                { label: 'Ağaç Formu', value: tree.label, color: '#059669' },
                               ].map(s => (
                                 <div key={s.label} style={{ textAlign: 'center', padding: '0.85rem', background: `${s.color}07`, borderRadius: 12, border: `1px solid ${s.color}20` }}>
                                   <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>{s.label}</p>
@@ -557,8 +819,7 @@ const CoachDashboard = () => {
                             <div style={{ padding: '1.25rem', background: tree.level >= 4 ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : '#f8fafc', border: `1px solid ${tree.level >= 4 ? '#fde68a' : '#e2e8f0'}`, borderRadius: 16, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                               <div>
                                 <h4 style={{ margin: 0, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: 800 }}>
-                                  {tree.icon} Mevcut Ağaç Evrimi: Seviye {tree.level} ({tree.label})
-                                  {tree.level >= 4 && <span style={{ background: '#f59e0b', color: 'white', padding: '0.15rem 0.6rem', borderRadius: 12, fontSize: '0.72rem' }}>✨ ULU AĞAÇ ULAŞILDI!</span>}
+                                  Mevcut Ağaç Evrimi: Seviye {tree.level} ({tree.label})
                                 </h4>
                                 <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
                                   Kümülatif Ağaç Puanı: <strong>{student.treePoints || student.totalStudyHours || 0} Puan</strong> (Günde 5+ pomodoro veya kümülatif puan ile evrimleşir)
@@ -567,7 +828,7 @@ const CoachDashboard = () => {
                             </div>
 
                             <div style={{ padding: '1.25rem', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 16 }}>
-                              <h4 style={{ margin: '0 0 0.6rem', color: '#6366f1', fontSize: '0.9rem', fontWeight: 800 }}>🎯 Ana Ekran Koç Mesajı & Tavsiyesi Gönder</h4>
+                              <h4 style={{ margin: '0 0 0.6rem', color: '#6366f1', fontSize: '0.9rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Target size={16} /> Ana Ekran Koç Mesajı & Tavsiyesi Gönder</h4>
                               <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <input type="text" className="input-field" placeholder="Öğrencinin panelinde anlık görünecek tavsiye..."
                                   value={recommendations[student.id] || ''}
@@ -583,27 +844,49 @@ const CoachDashboard = () => {
                         {/* Sub-tab: EXAMS */}
                         {((studentTab[student.id] || 'overview') === 'exams') && (
                           <div>
-                            <h4 style={{ color: '#6366f1', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800 }}>📊 Deneme Netleri & ÖSYM Hedef Karşılaştırması</h4>
+                            <h4 style={{ color: '#6366f1', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BarChart2 size={16} /> Deneme Netleri & ÖSYM Hedef Karşılaştırması</h4>
                             {exams.length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Henüz girilmiş bir deneme yok.</p> : (
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                                {exams.map(exam => (
-                                  <div key={exam.id} style={{ padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                      <div>
-                                        <p style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{exam.title}</p>
-                                        <p style={{ margin: '0.15rem 0 0', color: '#94a3b8', fontSize: '0.75rem' }}>🗓 {exam.date} — {(exam.examType || student.examType || 'yks').toUpperCase()}</p>
+                                {exams.map(exam => {
+                                  const revTopics = exam.revisedTopics || [];
+                                  const groupedRev = groupTopicsBySubject(revTopics);
+                                  return (
+                                    <div key={exam.id} style={{ padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                        <div>
+                                          <p style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{exam.title}</p>
+                                          <p style={{ margin: '0.15rem 0 0', color: '#94a3b8', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Calendar size={13} /> {exam.date} — {(exam.examType || student.examType || 'yks').toUpperCase()}</p>
+                                        </div>
+                                        <span style={{ padding: '0.25rem 0.65rem', background: 'rgba(16,185,129,0.15)', color: '#059669', borderRadius: 10, fontWeight: 800, fontSize: '0.9rem' }}>
+                                          {exam.total} Net
+                                        </span>
                                       </div>
-                                      <span style={{ padding: '0.25rem 0.65rem', background: 'rgba(16,185,129,0.15)', color: '#059669', borderRadius: 10, fontWeight: 800, fontSize: '0.9rem' }}>
-                                        {exam.total} Net
-                                      </span>
+
+                                      {/* Derslere Göre Ayrılmış Tekrar Edilmesi / Çalışılması Gereken Konular */}
+                                      {revTopics.length > 0 && (
+                                        <div style={{ marginBottom: '0.85rem', padding: '0.75rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
+                                          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#b45309', marginBottom: '0.4rem' }}>
+                                            🚨 Çalışılması / Tekrar Edilmesi Gereken Konular:
+                                          </span>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 140, overflowY: 'auto' }}>
+                                            {Object.entries(groupedRev).map(([subj, topicsList]) => (
+                                              <div key={subj} style={{ fontSize: '0.75rem', color: '#334155' }}>
+                                                <strong style={{ color: '#d97706' }}>[{subj}]: </strong>
+                                                <span>{topicsList.join(', ')}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setSelectedTrialModal({ exam, student, osymTarget: studentOsymTargets[student.id] || null }); }}
+                                        style={{ width: '100%', padding: '0.55rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, color: '#4f46e5', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                        👁 Detay & ÖSYM Hedefi ile Karşılaştır
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={e => { e.stopPropagation(); setSelectedTrialModal({ exam, student, osymTarget: studentOsymTargets[student.id] || null }); }}
-                                      style={{ width: '100%', padding: '0.55rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, color: '#4f46e5', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', transition: 'all 0.2s' }}>
-                                      👁 Detay & ÖSYM Hedefi ile Karşılaştır
-                                    </button>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -654,21 +937,21 @@ const CoachDashboard = () => {
                         {/* Sub-tab: GOALS */}
                         {((studentTab[student.id] || 'overview') === 'goals') && (
                           <div>
-                            <h4 style={{ color: '#1e293b', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800 }}>🎯 Hedefler, Görevler & Koç Tavsiyeleri</h4>
+                            <h4 style={{ color: '#1e293b', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Target size={16} /> Hedefler, Görevler & Koç Tavsiyeleri</h4>
                             {(studentGoals[student.id] || []).length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Öğrenci henüz hedef eklememiş.</p> : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {(studentGoals[student.id] || []).map(goal => {
                                   const key = `${student.id}_${goal.id}`;
                                   return (
                                     <div key={goal.id} style={{ padding: '1rem', background: '#f8fafc', borderLeft: `5px solid ${goal.completed ? '#10b981' : '#6366f1'}`, borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                                      <p style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '0.95rem', textDecoration: goal.completed ? 'line-through' : 'none' }}>
-                                        {goal.completed ? '✅ ' : '🎯 '}{goal.title}
+                                      <p style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '0.95rem', textDecoration: goal.completed ? 'line-through' : 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        {goal.completed ? <CheckCircle size={15} color="#10b981" /> : <Target size={15} color="#6366f1" />} {goal.title}
                                       </p>
                                       {goal.description && <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>{goal.description}</p>}
-                                      {goal.targetDate && <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: '#d97706', fontWeight: 700 }}>🗓 Hedef Tarihi: {goal.targetDate}</p>}
+                                      {goal.targetDate && <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: '#d97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Calendar size={13} /> Hedef Tarihi: {goal.targetDate}</p>}
                                       {goal.coachAdvice && (
                                         <div style={{ marginTop: '0.6rem', padding: '0.6rem 0.85rem', background: 'rgba(99,102,241,0.08)', borderRadius: 8, borderLeft: '3px solid #6366f1' }}>
-                                          <p style={{ margin: 0, fontSize: '0.82rem', color: '#4f46e5', fontWeight: 700 }}>💬 İletilen Koç Tavsiyesi: {goal.coachAdvice}</p>
+                                          <p style={{ margin: 0, fontSize: '0.82rem', color: '#4f46e5', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}><MessageSquare size={14} /> İletilen Koç Tavsiyesi: {goal.coachAdvice}</p>
                                         </div>
                                       )}
                                       <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
@@ -691,7 +974,7 @@ const CoachDashboard = () => {
                         {/* Sub-tab: RESOURCES */}
                         {((studentTab[student.id] || 'overview') === 'resources') && (
                           <div>
-                            <h4 style={{ color: '#1e293b', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800 }}>📚 Ders Bazlı Kaynak Kütüphanesi & Bitirme Hedefleri</h4>
+                            <h4 style={{ color: '#1e293b', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BookOpen size={16} /> Ders Bazlı Kaynak Kütüphanesi & Bitirme Hedefleri</h4>
                             {(studentResources[student.id] || []).length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Öğrenci kütüphanesine henüz kaynak eklememiş.</p> : (
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.85rem' }}>
                                 {(studentResources[student.id] || []).map(r => (
@@ -700,12 +983,12 @@ const CoachDashboard = () => {
                                       <span style={{ padding: '0.2rem 0.65rem', background: 'rgba(16,185,129,0.15)', color: '#059669', borderRadius: 12, fontSize: '0.72rem', fontWeight: 800 }}>
                                         {r.subject || 'Genel'}
                                       </span>
-                                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'capitalize' }}>
-                                        {r.type === 'book' ? '📚 Kitap' : r.type === 'video' ? '🎥 Video' : '📝 Deneme'}
+                                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'capitalize', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                        {r.type === 'book' ? <><BookOpen size={13} /> Kitap</> : r.type === 'video' ? <><Video size={13} /> Video</> : <><PenTool size={13} /> Deneme</>}
                                       </span>
                                     </div>
                                     <p style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{r.name}</p>
-                                    {r.targetDate && <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#d97706', fontWeight: 700, paddingTop: '0.5rem', borderTop: '1px dashed #cbd5e1' }}>🗓 Bitirme Hedef Tarihi: {r.targetDate}</p>}
+                                    {r.targetDate && <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#d97706', fontWeight: 700, paddingTop: '0.5rem', borderTop: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Calendar size={13} /> Bitirme Hedef Tarihi: {r.targetDate}</p>}
                                   </div>
                                 ))}
                               </div>
@@ -737,7 +1020,7 @@ const CoachDashboard = () => {
                               }
                             </div>
                             <div style={{ padding: '1.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16 }}>
-                              <h4 style={{ color: '#6366f1', margin: '0 0 0.85rem', fontSize: '0.95rem', fontWeight: 800 }}>🎯 Anlık Koç Tavsiyesi & Mesajı İlet</h4>
+                              <h4 style={{ color: '#6366f1', margin: '0 0 0.85rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MessageSquare size={16} /> Anlık Koç Tavsiyesi & Mesajı İlet</h4>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 <textarea className="input-field" rows={3} placeholder="Öğrencinin panelinde görünecek genel motivasyon veya çalışma tavsiyeniz..."
                                   value={recommendations[student.id] || ''}
@@ -749,6 +1032,100 @@ const CoachDashboard = () => {
                             </div>
                           </div>
                         )}
+
+                        {/* Sub-tab: CALENDAR & HEATMAP */}
+                        {((studentTab[student.id] || 'overview') === 'calendar') && (
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <StudyHeatmapCalendar studentId={student.id} studentName={student.name || student.email} isCoachView={true} />
+                          </div>
+                        )}
+
+                        {/* Sub-tab: CURRICULUM */}
+                        {((studentTab[student.id] || 'overview') === 'curriculum') && (() => {
+                          const grp = coachCurriculumGroup[student.id] || (student.examType === 'lgs' ? 'LGS' : (student.examType === 'kpss' ? 'KPSS' : 'YKS'));
+                          const subTabs = getSubTabsForExam(grp);
+                          const curSub = coachCurriculumSubTab[student.id] || subTabs[0] || 'TYT';
+                          const topics = getTopicsForExam(grp, curSub);
+                          const checkedMap = studentCurriculum[student.id] || {};
+                          const completedCount = topics.filter(t => checkedMap[t.id]).length;
+                          const progressPct = topics.length > 0 ? Math.round((completedCount / topics.length) * 100) : 0;
+
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                  {['YKS', 'LGS', 'KPSS'].map(g => (
+                                    <button key={g} type="button" onClick={() => {
+                                      const newSubs = getSubTabsForExam(g);
+                                      setCoachCurriculumGroup(p => ({ ...p, [student.id]: g }));
+                                      setCoachCurriculumSubTab(p => ({ ...p, [student.id]: newSubs[0] }));
+                                    }} style={{
+                                      padding: '0.4rem 0.85rem', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                                      background: grp === g ? '#6366f1' : '#f1f5f9', color: grp === g ? 'white' : '#64748b', border: 'none', transition: 'all 0.2s'
+                                    }}>
+                                      {g}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  {subTabs.map(st => (
+                                    <button key={st} type="button" onClick={() => setCoachCurriculumSubTab(p => ({ ...p, [student.id]: st }))} style={{
+                                      padding: '0.4rem 0.85rem', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                                      background: curSub === st ? '#4f46e5' : '#e2e8f0', color: curSub === st ? 'white' : '#475569', border: 'none', transition: 'all 0.2s'
+                                    }}>
+                                      {st}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e293b' }}>{grp} - {curSub} İlerlemesi</span>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#6366f1' }}>{completedCount} / {topics.length} Tamamlandı ({progressPct}%)</span>
+                                </div>
+                                <div style={{ width: '100%', height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                                  <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #10b981)', transition: 'width 0.3s' }} />
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.65rem' }}>
+                                {topics.map(topic => {
+                                  const isChecked = checkedMap[topic.id] || false;
+                                  return (
+                                    <div key={topic.id} style={{
+                                      padding: '0.75rem 0.95rem', borderRadius: 10,
+                                      background: isChecked ? '#f0fdf4' : '#ffffff',
+                                      border: `1px solid ${isChecked ? '#86efac' : '#e2e8f0'}`,
+                                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem'
+                                    }}>
+                                      <div>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: isChecked ? '#166534' : '#1e293b' }}>
+                                          {topic.name}
+                                        </p>
+                                        <p style={{ margin: '0.15rem 0 0', fontSize: '0.72rem', color: '#64748b' }}>
+                                          {topic.subject} • Kod: {topic.id}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        {isChecked ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.6rem', borderRadius: 6, background: '#dcfce7', color: '#166534', fontSize: '0.75rem', fontWeight: 800 }}>
+                                            <CheckCircle size={14} /> Tamamlandı
+                                          </span>
+                                        ) : (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.6rem', borderRadius: 6, background: '#f1f5f9', color: '#64748b', fontSize: '0.75rem', fontWeight: 700 }}>
+                                            <XCircle size={14} /> Bekliyor
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -761,7 +1138,7 @@ const CoachDashboard = () => {
         {/* ---- TÜM HEDEFLER ---- */}
         {activeTab === 'goals' && (
           <div>
-            <h1 style={{ marginBottom: '1.5rem' }}>🎯 Tüm Öğrencilerin Hedefleri</h1>
+            <h1 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Target size={24} color="#6366f1" /> Tüm Öğrencilerin Hedefleri</h1>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {students.map(student => {
                 const goals = studentGoals[student.id] || [];
@@ -783,10 +1160,12 @@ const CoachDashboard = () => {
                         const key = `${student.id}_${goal.id}`;
                         return (
                           <div key={goal.id} style={{ padding: '0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: '0.5rem' }}>
-                            <p style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{goal.completed ? '✅ ' : '🎯 '}{goal.title}</p>
-                            {goal.targetDate && <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#f59e0b' }}>🗓 {goal.targetDate}</p>}
+                            <p style={{ margin: 0, fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              {goal.completed ? <CheckCircle size={15} color="#10b981" /> : <Target size={15} color="#6366f1" />} {goal.title}
+                            </p>
+                            {goal.targetDate && <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Calendar size={13} /> {goal.targetDate}</p>}
                             {goal.coachAdvice && <div style={{ marginTop: '0.4rem', padding: '0.4rem 0.6rem', background: 'rgba(99,102,241,0.08)', borderRadius: 6, borderLeft: '3px solid #6366f1' }}>
-                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#6366f1' }}>💬 {goal.coachAdvice}</p>
+                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><MessageSquare size={13} /> {goal.coachAdvice}</p>
                             </div>}
                             <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.4rem' }}>
                               <input type="text" className="input-field" placeholder="Bu hedef için tavsiye..." style={{ fontSize: '0.82rem' }}
@@ -936,11 +1315,12 @@ const CoachDashboard = () => {
                               </p>
                             </div>
                             <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
                               padding: '0.2rem 0.6rem', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
                               background: req.status === 'accepted' ? 'rgba(16,185,129,0.1)' : req.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
                               color: req.status === 'accepted' ? '#059669' : req.status === 'rejected' ? '#ef4444' : '#d97706'
                             }}>
-                              {req.status === 'pending' ? '⏳ Bekliyor' : req.status === 'accepted' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                              {req.status === 'pending' ? <><Clock size={13} /> Bekliyor</> : req.status === 'accepted' ? <><CheckCircle size={13} /> Onaylandı</> : <><XCircle size={13} /> Reddedildi</>}
                             </span>
                           </div>
                           {req.message && (
@@ -949,8 +1329,8 @@ const CoachDashboard = () => {
                             </div>
                           )}
                           {req.status === 'accepted' && req.appointmentTime && (
-                            <p style={{ margin: 0, fontWeight: 700, color: '#059669', fontSize: '0.9rem' }}>
-                              📅 {new Date(req.appointmentTime).toLocaleString('tr-TR')}
+                            <p style={{ margin: 0, fontWeight: 700, color: '#059669', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <Calendar size={14} /> {new Date(req.appointmentTime).toLocaleString('tr-TR')}
                             </p>
                           )}
                         </div>
@@ -983,7 +1363,7 @@ const CoachDashboard = () => {
         {activeTab === 'messages' && (
           <div>
             <h1 style={{ marginBottom: '1.5rem' }}>💬 Öğrencilerle Mesajlaşma</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: '1.25rem', height: '70vh' }}>
+            <div className="coach-messages-grid" style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '1.25rem', height: '70vh' }}>
               {/* Student list */}
               <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '1rem' }}>
                 <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Öğrenciler</p>
@@ -1038,14 +1418,16 @@ const CoachDashboard = () => {
                     return (
                       <div key={msg.id} style={{
                         alignSelf: isMine ? 'flex-end' : 'flex-start',
-                        background: isMine ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : '#f1f5f9',
-                        color: isMine ? 'white' : '#1e293b',
-                        padding: '0.65rem 1rem',
-                        borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                        maxWidth: '68%', fontSize: '0.875rem'
+                        background: isMine ? 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)' : '#ffffff',
+                        color: isMine ? '#ffffff' : '#0f172a',
+                        padding: '0.7rem 1.1rem',
+                        borderRadius: isMine ? '16px 16px 3px 16px' : '16px 16px 16px 3px',
+                        maxWidth: '70%', fontSize: '0.9rem',
+                        boxShadow: isMine ? '0 4px 12px rgba(37, 99, 235, 0.22)' : '0 2px 8px rgba(15, 23, 42, 0.08)',
+                        border: isMine ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #e2e8f0'
                       }}>
-                        <p style={{ margin: 0 }}>{msg.text}</p>
-                        <span style={{ fontSize: '0.65rem', opacity: 0.7, display: 'block', textAlign: 'right', marginTop: '0.2rem' }}>
+                        <p style={{ margin: 0, fontWeight: 600, color: isMine ? '#ffffff' : '#0f172a' }}>{msg.text}</p>
+                        <span style={{ fontSize: '0.68rem', color: isMine ? 'rgba(255, 255, 255, 0.85)' : '#64748b', display: 'block', textAlign: 'right', marginTop: '0.25rem', fontWeight: 600 }}>
                           {msg.createdAt ? new Date(msg.createdAt.toMillis ? msg.createdAt.toMillis() : msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
                         </span>
                       </div>
@@ -1100,6 +1482,8 @@ const CoachDashboard = () => {
           dinAyt: 'AYT Din'
         };
 
+        const examIsAyt = exam.examType === 'ayt' || (exam.title && exam.title.toUpperCase().includes('AYT')) || exam.aytMat !== undefined || exam.fizik !== undefined || exam.kimya !== undefined;
+
         const getOsymSubjectTarget = (subjKey) => {
           if (isLgs && osym.lgs) {
             const l = osym.lgs;
@@ -1112,17 +1496,20 @@ const CoachDashboard = () => {
           }
           if (!isLgs && osym.yks) {
             const y = osym.yks;
-            if (subjKey === 'turkce') return y.tyt_turkce_d - (y.tyt_turkce_y || 0) / 4;
-            if (subjKey === 'matematik') return y.tyt_mat_d - (y.tyt_mat_y || 0) / 4;
-            if (subjKey === 'fen') return y.tyt_fen_d - (y.tyt_fen_y || 0) / 4;
-            if (subjKey === 'sosyal') return y.tyt_sosyal_d - (y.tyt_sosyal_y || 0) / 4;
-            if (subjKey === 'aytMat') return y.ayt_mat_d - (y.ayt_mat_y || 0) / 4;
-            if (subjKey === 'fizik') return y.ayt_fizik_d - (y.ayt_fizik_y || 0) / 4;
-            if (subjKey === 'kimya') return y.ayt_kimya_d - (y.ayt_kimya_y || 0) / 4;
-            if (subjKey === 'biyoloji') return y.ayt_biyo_d - (y.ayt_biyo_y || 0) / 4;
-            if (subjKey === 'edebiyat') return y.ayt_tde_d - (y.ayt_tde_y || 0) / 4;
-            if (subjKey === 'tarih1') return y.ayt_tar1_d - (y.ayt_tar1_y || 0) / 4;
-            if (subjKey === 'cografya1') return y.ayt_cog1_d - (y.ayt_cog1_y || 0) / 4;
+            if (!examIsAyt) {
+              if (subjKey === 'turkce') return y.tyt_turkce_d - (y.tyt_turkce_y || 0) / 4;
+              if (subjKey === 'matematik') return y.tyt_mat_d - (y.tyt_mat_y || 0) / 4;
+              if (subjKey === 'fen') return y.tyt_fen_d - (y.tyt_fen_y || 0) / 4;
+              if (subjKey === 'sosyal') return y.tyt_sosyal_d - (y.tyt_sosyal_y || 0) / 4;
+            } else {
+              if (subjKey === 'matematik' || subjKey === 'aytMat') return y.ayt_mat_d - (y.ayt_mat_y || 0) / 4;
+              if (subjKey === 'fizik') return y.ayt_fizik_d - (y.ayt_fizik_y || 0) / 4;
+              if (subjKey === 'kimya') return y.ayt_kimya_d - (y.ayt_kimya_y || 0) / 4;
+              if (subjKey === 'biyoloji') return y.ayt_biyo_d - (y.ayt_biyo_y || 0) / 4;
+              if (subjKey === 'turkce' || subjKey === 'edebiyat') return y.ayt_tde_d - (y.ayt_tde_y || 0) / 4;
+              if (subjKey === 'tarih1') return y.ayt_tar1_d - (y.ayt_tar1_y || 0) / 4;
+              if (subjKey === 'cografya1') return y.ayt_cog1_d - (y.ayt_cog1_y || 0) / 4;
+            }
           }
           return null;
         };
@@ -1139,17 +1526,20 @@ const CoachDashboard = () => {
           }
           if (!isLgs && osym.yks) {
             const y = osym.yks;
-            if (subjKey === 'turkce') return { d: Number(y.tyt_turkce_d || 0), y: Number(y.tyt_turkce_y || 0), net: Number(y.tyt_turkce_d || 0) - Number(y.tyt_turkce_y || 0) / 4 };
-            if (subjKey === 'matematik') return { d: Number(y.tyt_mat_d || 0), y: Number(y.tyt_mat_y || 0), net: Number(y.tyt_mat_d || 0) - Number(y.tyt_mat_y || 0) / 4 };
-            if (subjKey === 'fen') return { d: Number(y.tyt_fen_d || 0), y: Number(y.tyt_fen_y || 0), net: Number(y.tyt_fen_d || 0) - Number(y.tyt_fen_y || 0) / 4 };
-            if (subjKey === 'sosyal') return { d: Number(y.tyt_sosyal_d || 0), y: Number(y.tyt_sosyal_y || 0), net: Number(y.tyt_sosyal_d || 0) - Number(y.tyt_sosyal_y || 0) / 4 };
-            if (subjKey === 'aytMat') return { d: Number(y.ayt_mat_d || 0), y: Number(y.ayt_mat_y || 0), net: Number(y.ayt_mat_d || 0) - Number(y.ayt_mat_y || 0) / 4 };
-            if (subjKey === 'fizik') return { d: Number(y.ayt_fizik_d || 0), y: Number(y.ayt_fizik_y || 0), net: Number(y.ayt_fizik_d || 0) - Number(y.ayt_fizik_y || 0) / 4 };
-            if (subjKey === 'kimya') return { d: Number(y.ayt_kimya_d || 0), y: Number(y.ayt_kimya_y || 0), net: Number(y.ayt_kimya_d || 0) - Number(y.ayt_kimya_y || 0) / 4 };
-            if (subjKey === 'biyoloji') return { d: Number(y.ayt_biyo_d || 0), y: Number(y.ayt_biyo_y || 0), net: Number(y.ayt_biyo_d || 0) - Number(y.ayt_biyo_y || 0) / 4 };
-            if (subjKey === 'edebiyat') return { d: Number(y.ayt_tde_d || 0), y: Number(y.ayt_tde_y || 0), net: Number(y.ayt_tde_d || 0) - Number(y.ayt_tde_y || 0) / 4 };
-            if (subjKey === 'tarih1') return { d: Number(y.ayt_tar1_d || 0), y: Number(y.ayt_tar1_y || 0), net: Number(y.ayt_tar1_d || 0) - Number(y.ayt_tar1_y || 0) / 4 };
-            if (subjKey === 'cografya1') return { d: Number(y.ayt_cog1_d || 0), y: Number(y.ayt_cog1_y || 0), net: Number(y.ayt_cog1_d || 0) - Number(y.ayt_cog1_y || 0) / 4 };
+            if (!examIsAyt) {
+              if (subjKey === 'turkce') return { d: Number(y.tyt_turkce_d || 0), y: Number(y.tyt_turkce_y || 0), net: Number(y.tyt_turkce_d || 0) - Number(y.tyt_turkce_y || 0) / 4 };
+              if (subjKey === 'matematik') return { d: Number(y.tyt_mat_d || 0), y: Number(y.tyt_mat_y || 0), net: Number(y.tyt_mat_d || 0) - Number(y.tyt_mat_y || 0) / 4 };
+              if (subjKey === 'fen') return { d: Number(y.tyt_fen_d || 0), y: Number(y.tyt_fen_y || 0), net: Number(y.tyt_fen_d || 0) - Number(y.tyt_fen_y || 0) / 4 };
+              if (subjKey === 'sosyal') return { d: Number(y.tyt_sosyal_d || 0), y: Number(y.tyt_sosyal_y || 0), net: Number(y.tyt_sosyal_d || 0) - Number(y.tyt_sosyal_y || 0) / 4 };
+            } else {
+              if (subjKey === 'matematik' || subjKey === 'aytMat') return { d: Number(y.ayt_mat_d || 0), y: Number(y.ayt_mat_y || 0), net: Number(y.ayt_mat_d || 0) - Number(y.ayt_mat_y || 0) / 4 };
+              if (subjKey === 'fizik') return { d: Number(y.ayt_fizik_d || 0), y: Number(y.ayt_fizik_y || 0), net: Number(y.ayt_fizik_d || 0) - Number(y.ayt_fizik_y || 0) / 4 };
+              if (subjKey === 'kimya') return { d: Number(y.ayt_kimya_d || 0), y: Number(y.ayt_kimya_y || 0), net: Number(y.ayt_kimya_d || 0) - Number(y.ayt_kimya_y || 0) / 4 };
+              if (subjKey === 'biyoloji') return { d: Number(y.ayt_biyo_d || 0), y: Number(y.ayt_biyo_y || 0), net: Number(y.ayt_biyo_d || 0) - Number(y.ayt_biyo_y || 0) / 4 };
+              if (subjKey === 'turkce' || subjKey === 'edebiyat') return { d: Number(y.ayt_tde_d || 0), y: Number(y.ayt_tde_y || 0), net: Number(y.ayt_tde_d || 0) - Number(y.ayt_tde_y || 0) / 4 };
+              if (subjKey === 'tarih1') return { d: Number(y.ayt_tar1_d || 0), y: Number(y.ayt_tar1_y || 0), net: Number(y.ayt_tar1_d || 0) - Number(y.ayt_tar1_y || 0) / 4 };
+              if (subjKey === 'cografya1') return { d: Number(y.ayt_cog1_d || 0), y: Number(y.ayt_cog1_y || 0), net: Number(y.ayt_cog1_d || 0) - Number(y.ayt_cog1_y || 0) / 4 };
+            }
           }
           return null;
         };
@@ -1189,8 +1579,8 @@ const CoachDashboard = () => {
             }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#1e293b' }}>
-                    📊 {exam.title} — ÖSYM Hedef Karşılaştırması
+                  <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <BarChart2 size={22} color="#6366f1" /> {exam.title} — ÖSYM Hedef Karşılaştırması
                   </h3>
                   <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
                     {student.name || student.email} ({isLgs ? 'LGS (3 Yanlış 1 Doğru)' : 'YKS (4 Yanlış 1 Doğru)'}) — Tarih: {exam.date}
@@ -1223,16 +1613,16 @@ const CoachDashboard = () => {
 
               <h4 style={{ margin: '0 0 1rem', color: '#1e293b', fontSize: '1.05rem', fontWeight: 800 }}>Ders Bazlı Doğru - Yanlış - Net ve Hedef Karşılaştırması</h4>
               
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800 }}>Ders Adı</th>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800, textAlign: 'center' }}>Deneme (D / Y)</th>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800, textAlign: 'center' }}>Deneme Neti</th>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800, textAlign: 'center' }}>Hedef (D / Y)</th>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800, textAlign: 'center' }}>Hedef Neti</th>
-                      <th style={{ padding: '0.75rem 0.6rem', fontWeight: 800, textAlign: 'right' }}>Fark & Durum</th>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1', color: '#334155' }}>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800 }}>Ders Adı</th>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800, textAlign: 'center' }}>Deneme (D / Y)</th>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800, textAlign: 'center' }}>Deneme Neti</th>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800, textAlign: 'center' }}>Hedef (D / Y)</th>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800, textAlign: 'center' }}>Hedef Neti</th>
+                      <th style={{ padding: '0.85rem 0.75rem', fontWeight: 800, textAlign: 'right' }}>Fark & Durum</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1276,9 +1666,9 @@ const CoachDashboard = () => {
                                 <span style={{
                                   padding: '0.25rem 0.6rem', borderRadius: 12, fontWeight: 800, fontSize: '0.75rem',
                                   background: diff >= 0 ? '#dcfce7' : '#fee2e2',
-                                  color: diff >= 0 ? '#15803d' : '#b91c1c', display: 'inline-block'
+                                  color: diff >= 0 ? '#15803d' : '#b91c1c', display: 'inline-flex', alignItems: 'center', gap: '0.3rem'
                                 }}>
-                                  {diff >= 0 ? `🎉 +${diff} (Hedef Aşıldı)` : `⚠️ ${diff} (Hedefin Altında)`}
+                                  {diff >= 0 ? <><Award size={13} /> +{diff} (Hedef Aşıldı)</> : <><AlertCircle size={13} /> {diff} (Hedefin Altında)</>}
                                 </span>
                               ) : (
                                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Hedef Girilmemiş</span>
@@ -1291,6 +1681,34 @@ const CoachDashboard = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Koç İçin Modalda Derslere Göre Tekrar Edilmesi / Çalışılması Gereken Konular */}
+              {(() => {
+                const revTopics = exam.revisedTopics || [];
+                if (revTopics.length === 0) return null;
+                const groupedRev = groupTopicsBySubject(revTopics);
+                return (
+                  <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 16 }}>
+                    <h5 style={{ margin: '0 0 0.75rem', color: '#b45309', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      🚨 Öğrencinin Bu Denemede Seçtiği Çalışılması / Tekrar Edilmesi Gereken Konular (Derslere Göre)
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                      {Object.entries(groupedRev).map(([subj, topicsList]) => (
+                        <div key={subj} style={{ background: '#ffffff', padding: '0.85rem', borderRadius: 12, border: '1px solid #fde68a', boxShadow: '0 2px 6px rgba(245,158,11,0.08)' }}>
+                          <span style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#92400e', borderBottom: '1px solid #fef3c7', paddingBottom: '0.35rem', marginBottom: '0.45rem' }}>
+                            📚 {subj} ({topicsList.length})
+                          </span>
+                          <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.78rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            {topicsList.map((tName, i) => (
+                              <li key={i} style={{ fontWeight: 600, color: '#475569' }}>{tName}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ marginTop: '1.75rem', textAlign: 'right' }}>
                 <button className="btn btn-primary" onClick={() => setSelectedTrialModal(null)} style={{ padding: '0.65rem 1.75rem', fontWeight: 800 }}>

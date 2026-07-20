@@ -18,12 +18,12 @@ export const AuthProvider = ({ children }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        
+
         // Kullanıcının rolünü Firestore'dan dinle
         unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
-            setLoading(false); // Sadece doküman gelince yüklemeyi bitir (kayıt anında doc gelene kadar bekle)
+            setLoading(false);
           } else {
             // Doküman henüz oluşturulmadı (Kayıt aşaması). Beklemeye devam et.
             setUserRole(null);
