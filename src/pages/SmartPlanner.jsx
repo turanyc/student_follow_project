@@ -77,11 +77,8 @@ const SmartPlanner = () => {
     { id: 't4', topic: 'Kimya: Kimya Bilimi', targetCount: 40, completedCount: 0, day: 'Yarın', status: 'pending' }
   ]);
 
-  // Spaced Repetition (SRS) tasks state
-  const [srsTasks, setSrsTasks] = useState([
-    { id: 'srs1', topic: '🔁 Tekrar Etmelisin: Türkçe - Paragrafta Ana Fikir', learnedDate: '2026-07-25', intervalDays: 1, dueDate: 'Bugün', type: '1. Gün Tekrar Testi', isDone: false },
-    { id: 'srs2', topic: '🔁 Tekrar Etmelisin: Matematik - Üslü Sayılar', learnedDate: '2026-07-23', intervalDays: 3, dueDate: 'Bugün', type: '3. Gün Derinleştirme Tekrarı', isDone: false }
-  ]);
+  // Spaced Repetition (SRS) tasks state - built from real completed curriculum topics
+  const [srsTasks, setSrsTasks] = useState([]);
 
   // Completed Skills for Skill Tree
   const [completedSkillIds, setCompletedSkillIds] = useState(['m_temel', 'f_vektor', 't_sozcuk']);
@@ -738,50 +735,72 @@ const SmartPlanner = () => {
             Öğrenilen bir konu 1, 3, 7 ve 30. günlerde tekrar edilmediğinde %80 oranında unutulur. Sistem unutturmamak için otomatik bildirimler üretir.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-            {srsTasks.map(item => (
-              <div
-                key={item.id}
-                style={{
-                  padding: '1.25rem', borderRadius: 18,
-                  background: item.isDone ? '#f0fdf4' : '#fffbeb',
-                  border: item.isDone ? '1.5px solid #a7f3d0' : '1.5px solid #fde68a',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ padding: '0.15rem 0.6rem', borderRadius: 12, background: item.isDone ? '#dcfce7' : '#fef3c7', color: item.isDone ? '#15803d' : '#b45309', fontSize: '0.72rem', fontWeight: 800 }}>
-                      {item.type}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
-                      {item.dueDate}
-                    </span>
-                  </div>
-                  <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', fontWeight: 900, color: item.isDone ? '#166534' : '#0f172a', textDecoration: item.isDone ? 'line-through' : 'none' }}>
-                    {item.topic}
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-                    Öğrenilme Tarihi: {item.learnedDate} (+{item.intervalDays} Gün Tekrarı)
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleToggleSrsDone(item.id)}
+          {srsTasks.length === 0 ? (
+            <div style={{
+              padding: '3.5rem 2rem', textAlign: 'center', background: '#fffbeb',
+              borderRadius: 22, border: '2px dashed #fde68a', color: '#b45309',
+              boxShadow: '0 4px 20px rgba(245, 158, 11, 0.08)'
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: 20, background: '#fef3c7',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1.25rem', border: '1px solid #fde047'
+              }}>
+                <AlertCircle size={36} color="#d97706" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', fontWeight: 900, color: '#92400e' }}>
+                Henüz Tekrar Edilecek Konunuz Bulunmuyor 💡
+              </h3>
+              <p style={{ fontSize: '0.95rem', color: '#a16207', maxWidth: '540px', margin: '0 auto', lineHeight: 1.6, fontWeight: 600 }}>
+                Aralıklı tekrar sisteminin (Spaced Repetition) çalışabilmesi ve unutturmamak için tekrar görevleri atayabilmesi için <b>ÖSYM Müfredatı</b> sayfasından veya <b>Akıllı Planlayıcı</b>'dan en az 1 konuyu <u>tamamlandı</u> olarak bitirmelisiniz!
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {srsTasks.map(item => (
+                <div
+                  key={item.id}
                   style={{
-                    marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: 10, border: 'none',
-                    background: item.isDone ? '#dcfce7' : '#1e293b',
-                    color: item.isDone ? '#15803d' : '#ffffff',
-                    fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
+                    padding: '1.25rem', borderRadius: 18,
+                    background: item.isDone ? '#f0fdf4' : '#fffbeb',
+                    border: item.isDone ? '1.5px solid #a7f3d0' : '1.5px solid #fde68a',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                   }}
                 >
-                  {item.isDone ? <Check size={16} /> : <CheckCircle2 size={16} />}
-                  {item.isDone ? 'Tekrar Tamamlandı!' : 'Tekrar Testini Tamamla'}
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ padding: '0.15rem 0.6rem', borderRadius: 12, background: item.isDone ? '#dcfce7' : '#fef3c7', color: item.isDone ? '#15803d' : '#b45309', fontSize: '0.72rem', fontWeight: 800 }}>
+                        {item.type}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
+                        {item.dueDate}
+                      </span>
+                    </div>
+                    <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', fontWeight: 900, color: item.isDone ? '#166534' : '#0f172a', textDecoration: item.isDone ? 'line-through' : 'none' }}>
+                      {item.topic}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
+                      Öğrenilme Tarihi: {item.learnedDate} (+{item.intervalDays} Gün Tekrarı)
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleToggleSrsDone(item.id)}
+                    style={{
+                      marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: 10, border: 'none',
+                      background: item.isDone ? '#dcfce7' : '#1e293b',
+                      color: item.isDone ? '#15803d' : '#ffffff',
+                      fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
+                    }}
+                  >
+                    {item.isDone ? <Check size={16} /> : <CheckCircle2 size={16} />}
+                    {item.isDone ? 'Tekrar Tamamlandı!' : 'Tekrar Testini Tamamla'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
