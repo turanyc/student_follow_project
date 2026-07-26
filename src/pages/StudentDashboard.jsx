@@ -20,6 +20,7 @@ import DailyMoodModal from '../components/DailyMoodModal';
 import PomodoroTimer from '../components/PomodoroTimer';
 import StudyHeatmapCalendar from '../components/StudyHeatmapCalendar';
 import LiveLeaderboard from './LiveLeaderboard';
+import ProfileEditModal from '../components/ProfileEditModal';
 
 const NAV_ITEMS = [
   { path: '/student/smart-planner',icon: Brain,       label: 'Akıllı Planlayıcı ⚡', color: '#a855f7' },
@@ -113,6 +114,7 @@ const StudentDashboard = ({ children }) => {
   const [apptTime, setApptTime] = useState('');
   const [apptNote, setApptNote] = useState('');
   const [requestingAppt, setRequestingAppt] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -642,9 +644,9 @@ const StudentDashboard = ({ children }) => {
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'rgba(30,119,150,0.06)', padding: '0.6rem', borderRadius: 10 }} onClick={() => { setIsMobileMenuOpen(false); handleGuardedNavigation(() => navigate('/profile')); }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'rgba(30,119,150,0.06)', padding: '0.6rem', borderRadius: 10 }} onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', overflow: 'hidden' }}>
-                    {userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓'}
+                    {userData.avatarEmoji || (userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓')}
                   </div>
                   <div>
                     <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>{userData.name || userData.email || 'Öğrenci Paneli'}</p>
@@ -723,12 +725,12 @@ const StudentDashboard = ({ children }) => {
         </div>
 
         <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => handleGuardedNavigation(() => navigate('/profile'))} title="Profilinizi Düzenleyin">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => setIsProfileModalOpen(true)} title="Profilinizi ve Hedeflerinizi Düzenleyin">
             <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(30, 119, 150, 0.25)', overflow: 'hidden' }}>
-              {userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓'}
+              {userData.avatarEmoji || (userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓')}
             </div>
             <div style={{ overflow: 'hidden' }}>
-              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>Öğrenci Paneli</p>
+              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>⚙️ Profil Düzenle</p>
               <p style={{ margin: 0, fontSize: '0.72rem', color: '#1e7796', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userData.name || userData.email}</p>
             </div>
           </div>
@@ -1057,6 +1059,12 @@ const StudentDashboard = ({ children }) => {
         )}
         {children}
       </div>
+      {/* Profil Düzenleme Modalı */}
+      <ProfileEditModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        isCoach={false}
+      />
     </div>
   );
 };

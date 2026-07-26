@@ -10,6 +10,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'student' veya 'coach'
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,23 +20,25 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         setCurrentUser(user);
 
-        // Kullanıcının rolünü Firestore'dan dinle
+        // Kullanıcının rolünü ve profil verisini Firestore'dan dinle
         unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
+            setUserData(userDoc.data());
             setLoading(false);
           } else {
-            // Doküman henüz oluşturulmadı (Kayıt aşaması). Beklemeye devam et.
             setUserRole(null);
+            setUserData(null);
           }
         }, (error) => {
-          console.error("Rol bilgisi alınamadı", error);
+          console.error("Rol ve profil bilgisi alınamadı", error);
           setLoading(false);
         });
         
       } else {
         setCurrentUser(null);
         setUserRole(null);
+        setUserData(null);
         setLoading(false);
         if (unsubscribeDoc) unsubscribeDoc();
       }
@@ -50,6 +53,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userRole,
+    userData,
     loading
   };
 

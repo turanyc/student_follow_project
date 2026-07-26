@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Analytics from './Analytics';
 import UniSearchRobot from '../components/UniSearchRobot';
+import ProfileEditModal from '../components/ProfileEditModal';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -72,7 +73,9 @@ const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState('feed');   // feed | students | goals | moods | analytics | events | appointments | messages
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
-
+  const [selectedAnalyticsStudent, setSelectedAnalyticsStudent] = useState(null);
+  const [selectedStudentForWeakTopics, setSelectedStudentForWeakTopics] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [students, setStudents]           = useState([]);
   const [events, setEvents]               = useState([]);
   const [newEventTitle, setNewEventTitle] = useState('');
@@ -80,7 +83,6 @@ const CoachDashboard = () => {
   const [creatingEvent, setCreatingEvent] = useState(false);
 
   const [expandedStudent, setExpandedStudent]           = useState(null);
-  const [selectedAnalyticsStudent, setSelectedAnalyticsStudent] = useState(null);
   const [studentExams, setStudentExams]   = useState({});
   const [studentGoals, setStudentGoals]   = useState({});
   const [studentMoods, setStudentMoods]   = useState({});
@@ -499,6 +501,15 @@ const CoachDashboard = () => {
         </nav>
 
         <div className="coach-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <button onClick={() => setIsProfileModalOpen(true)} style={{
+            display: 'flex', alignItems: 'center', gap: '0.45rem',
+            padding: '0.5rem 0.95rem', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)',
+            color: '#818cf8', fontWeight: 700, fontSize: '0.82rem',
+            fontFamily: 'Outfit, sans-serif',
+          }} title="Profil ve Koçluk Bilgilerini Güncelle">
+            <User size={15} /> Profilim
+          </button>
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             padding: '0.5rem 1rem', borderRadius: 10, cursor: 'pointer',
@@ -1860,6 +1871,12 @@ const CoachDashboard = () => {
           </div>
         );
       })()}
+      {/* Koç Profil Düzenleme Modalı */}
+      <ProfileEditModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        isCoach={true}
+      />
     </div>
   );
 };
