@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Sparkles, RefreshCw, Calendar, CheckCircle2, Lock, Unlock,
   Clock, Flame, AlertCircle, ArrowRight, Zap, Target, BookOpen, Layers,
-  ChevronRight, Award, Plus, Trash2, Check, Bell
+  ChevronRight, Award, Plus, Trash2, Check, Bell, BarChart2, TrendingUp,
+  BookMarked, HelpCircle, FileText, Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import Swal from 'sweetalert2';
+import { CURRICULUM_DATA } from '../data/curriculumData';
 
 // ── Önkoşullu Konu Ağacı Haritası (Skill Tree Data) ──
 const SKILL_TREE_DATA = {
@@ -36,8 +38,8 @@ const SKILL_TREE_DATA = {
 };
 
 const SmartPlanner = () => {
-  const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'srs' | 'skillTree'
+  const { currentUser, userData } = useAuth();
+  const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'srs' | 'skillTree' | 'reports'
   const [selectedSkillSubject, setSelectedSkillSubject] = useState('Matematik');
 
   // Daily Tasks state
@@ -58,6 +60,11 @@ const SmartPlanner = () => {
   // Completed Skills for Skill Tree
   const [completedSkillIds, setCompletedSkillIds] = useState(['m_temel', 'f_vektor', 't_sozcuk']);
 
+  // Curriculum progress state
+  const [checkedCurriculumTopics, setCheckedCurriculumTopics] = useState({});
+  const [studySessions, setStudySessions] = useState([]);
+  const [dailyReports, setDailyReports] = useState([]);
+
   // New task form state
   const [newTaskTopic, setNewTaskTopic] = useState('');
   const [newTaskTarget, setNewTaskTarget] = useState(50);
@@ -67,6 +74,7 @@ const SmartPlanner = () => {
     if (!currentUser) return;
     const loadPlannerData = async () => {
       try {
+        // Load smart planner state
         const docRef = doc(db, 'users', currentUser.uid, 'settings', 'smartPlannerData');
         const snap = await getDoc(docRef);
         if (snap.exists()) {
@@ -75,11 +83,60 @@ const SmartPlanner = () => {
           if (data.srsTasks) setSrsTasks(data.srsTasks);
           if (data.completedSkillIds) setCompletedSkillIds(data.completedSkillIds);
         }
+
+        // Load curriculum progress
+        const currRef = doc(db, 'users', currentUser.uid, 'settings', 'curriculumProgress');
+        const currSnap = await getDoc(currRef);
+        if (currSnap.exists() && currSnap.data().checked) {
+          setCheckedCurriculumTopics(currSnap.data().checked);
+        } else {
+          const local = localStorage.getItem(`curriculum_${currentUser.uid}`);
+          if (local) setCheckedCurriculumTopics(JSON.parse(local));
+        }
       } catch (err) {
         console.warn('Smart planner data load failed:', err);
       }
     };
     loadPlannerData();
+  }, [currentUser]);
+
+  // Listen to studySessions for historical daily reports
+  useEffect(() => {
+    if (!currentUser) return;
+    const qSess = query(
+      collection(db, 'users', currentUser.uid, 'studySessions'),
+      orderBy('startedAt', 'desc')
+    );
+    const unsub = onSnapshot(qSess, (snap) => {
+      const sessList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStudySessions(sessList);
+
+      // Group sessions by date and generate daily historical reports
+      const dateMap = {}; // { 'YYYY-MM-DD': { date, totalMinutes, topics: [], subjects: Set, count } }
+      sessList.forEach(s => {
+        const dStr = s.date || (s.startedAt ? s.startedAt.split('T')[0] : 'Bilinmeyen Tarih');
+        if (!dateMap[dStr]) {
+          dateMap[dStr] = {
+            date: dStr,
+            totalMinutes: 0,
+            totalQuestions: 0,
+            subjects: new Set(),
+            topics: []
+          };
+        }
+        dateMap[dStr].totalMinutes += Number(s.durationMinutes || 0);
+        if (s.durationMinutes) dateMap[dStr].totalQuestions += Math.round(s.durationMinutes * 1.8);
+        if (s.subject) dateMap[dStr].subjects.add(s.subject);
+        if (s.topic && !dateMap[dStr].topics.includes(s.topic)) {
+          dateMap[dStr].topics.push(s.topic);
+        }
+      });
+
+      const reportList = Object.values(dateMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+      setDailyReports(reportList);
+    });
+
+    return () => unsub();
   }, [currentUser]);
 
   const savePlannerData = async (newDaily, newSrs, newSkills) => {
@@ -95,6 +152,69 @@ const SmartPlanner = () => {
     } catch (err) {
       console.warn('Save planner data failed:', err);
     }
+  };
+
+  // 🎯 ÖSYM / MEB Müfredatına Göre Otomatik Planlama Algoritması
+  const handleAutoPlanFromCurriculum = () => {
+    const examGroup = (userData?.examType || 'yks').toUpperCase();
+    const curriculumExam = examGroup === 'LGS' ? CURRICULUM_DATA.LGS.LGS : (CURRICULUM_DATA.YKS.TYT || []);
+
+    if (!curriculumExam || curriculumExam.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Müfredat Bulunamadı', text: 'Profilinizdeki sınav türü için müfredat verisi tanımlanamadı.' });
+      return;
+    }
+
+    const uncompletedTopics = [];
+    const completedTopics = [];
+
+    curriculumExam.forEach(item => {
+      const isChecked = !!checkedCurriculumTopics[item.id];
+      if (isChecked) {
+        completedTopics.push(item);
+      } else {
+        uncompletedTopics.push(item);
+      }
+    });
+
+    // Create daily tasks for 3 uncompleted topics
+    const newDailyFromCurriculum = uncompletedTopics.slice(0, 3).map((item, idx) => ({
+      id: 'curr_uncomp_' + Date.now() + '_' + idx,
+      topic: `${item.subject}: ${item.topic} (Müfredat Hedefi)`,
+      targetCount: 50,
+      completedCount: 0,
+      day: idx === 0 ? 'Bugün' : 'Yarın',
+      status: 'pending'
+    }));
+
+    // Create SRS repeat tasks for completed topics
+    const newSrsFromCurriculum = completedTopics.slice(0, 3).map((item, idx) => ({
+      id: 'curr_comp_srs_' + Date.now() + '_' + idx,
+      topic: `🔁 Tekrar Etmelisin: ${item.subject} - ${item.topic}`,
+      learnedDate: new Date().toISOString().split('T')[0],
+      intervalDays: idx * 2 + 1,
+      dueDate: idx === 0 ? 'Bugün' : `${idx * 2 + 1} Gün Sonra`,
+      type: 'Tamamlanan Konu Düzenli Tekrarı',
+      isDone: false
+    }));
+
+    const updatedDaily = [...dailyTasks, ...newDailyFromCurriculum];
+    const updatedSrs = [...srsTasks, ...newSrsFromCurriculum];
+
+    setDailyTasks(updatedDaily);
+    setSrsTasks(updatedSrs);
+    savePlannerData(updatedDaily, updatedSrs, undefined);
+
+    Swal.fire({
+      icon: 'success',
+      title: '🎯 ÖSYM Müfredatınız Planlayıcıya Entegre Edildi!',
+      html: `
+        <div style="text-align:left; font-size:0.9rem; color:#334155; line-height:1.6;">
+          <p><b>Tamamlanmayan Konular:</b> ${newDailyFromCurriculum.length} adet eksik konu bugünkü/yarınki görevlerinize eklendi.</p>
+          <p><b>Tamamlanan Konular:</b> ${newSrsFromCurriculum.length} adet bitirilen konu hafızayı diri tutmak için <b>"🔁 Tekrar Etmelisin"</b> etiketiyle tekrarlara eklendi.</p>
+        </div>
+      `,
+      confirmButtonColor: '#6366f1'
+    });
   };
 
   // 1. Dinamik AI Yeniden Planlama Algoritması
@@ -158,7 +278,6 @@ const SmartPlanner = () => {
         const nextComp = Math.min(t.targetCount, Math.max(0, t.completedCount + addAmount));
         const isFinished = nextComp >= t.targetCount;
 
-        // Auto trigger Spaced Repetition if just completed!
         if (isFinished && t.status !== 'completed') {
           triggerSpacedRepetition(t.topic);
         }
@@ -175,7 +294,7 @@ const SmartPlanner = () => {
     savePlannerData(nextDaily, undefined, undefined);
   };
 
-  // 2. Aralıklı Tekrar (Spaced Repetition System - SRS) Tetikleyici (+1, +3, +7, +30 gün)
+  // 2. Aralıklı Tekrar (Spaced Repetition System - SRS) Tetikleyici
   const triggerSpacedRepetition = (topicName) => {
     const today = new Date().toISOString().split('T')[0];
     const newSrsItems = [
@@ -200,42 +319,19 @@ const SmartPlanner = () => {
   };
 
   const handleToggleSrsDone = (srsId) => {
-    const nextSrs = srsTasks.map(item => item.id === srsId ? { ...item, isDone: !item.isDone } : item);
+    const nextSrs = srsTasks.map(item => {
+      if (item.id === srsId) return { ...item, isDone: !item.isDone };
+      return item;
+    });
     setSrsTasks(nextSrs);
     savePlannerData(undefined, nextSrs, undefined);
   };
 
-  // 3. Önkoşullu Konu Ağacı (Skill Tree) Etkileşimi
-  const handleToggleSkillCompleted = (skill) => {
-    // Check if prerequisite is met
-    if (skill.prereq && !completedSkillIds.includes(skill.prereq)) {
-      const prereqObj = SKILL_TREE_DATA[selectedSkillSubject].find(s => s.id === skill.prereq);
-      Swal.fire({
-        icon: 'error',
-        title: '🔒 Kilitli Konu!',
-        html: `<strong>"${skill.name}"</strong> konusunu açmak için önce önkoşulu olan <strong>"${prereqObj?.name || 'Önkoşul Konusu'}"</strong> konusunu tamamlamalısın!`,
-        confirmButtonColor: '#ef4444'
-      });
-      return;
-    }
-
-    let nextSkills;
-    if (completedSkillIds.includes(skill.id)) {
-      nextSkills = completedSkillIds.filter(id => id !== skill.id);
-    } else {
-      nextSkills = [...completedSkillIds, skill.id];
-      triggerSpacedRepetition(skill.name);
-    }
-    setCompletedSkillIds(nextSkills);
-    savePlannerData(undefined, undefined, nextSkills);
-  };
-
-  // Add new manual task
   const handleAddNewTask = (e) => {
     e.preventDefault();
     if (!newTaskTopic.trim()) return;
     const newTask = {
-      id: 'task_' + Date.now(),
+      id: 'custom_' + Date.now(),
       topic: newTaskTopic.trim(),
       targetCount: Number(newTaskTarget) || 50,
       completedCount: 0,
@@ -249,207 +345,268 @@ const SmartPlanner = () => {
     setNewTaskTarget(50);
   };
 
-  const handleDeleteTask = (id) => {
-    const nextDaily = dailyTasks.filter(t => t.id !== id);
+  const handleDeleteTask = (taskId) => {
+    const nextDaily = dailyTasks.filter(t => t.id !== taskId);
     setDailyTasks(nextDaily);
     savePlannerData(nextDaily, undefined, undefined);
+  };
+
+  const handleToggleSkillCompleted = (skill) => {
+    const isCompleted = completedSkillIds.includes(skill.id);
+    const isLocked = skill.prereq ? !completedSkillIds.includes(skill.prereq) : false;
+
+    if (isLocked) {
+      const prereqSkill = SKILL_TREE_DATA[selectedSkillSubject].find(s => s.id === skill.prereq);
+      Swal.fire({
+        icon: 'warning',
+        title: '🔒 Konu Kilitli!',
+        text: `Bu konuyu çalışabilmek için önce önkoşulu olan "${prereqSkill?.name}" konusunu tamamlamalısınız!`
+      });
+      return;
+    }
+
+    let nextSkillIds;
+    if (isCompleted) {
+      nextSkillIds = completedSkillIds.filter(id => id !== skill.id);
+    } else {
+      nextSkillIds = [...completedSkillIds, skill.id];
+      triggerSpacedRepetition(skill.name);
+    }
+
+    setCompletedSkillIds(nextSkillIds);
+    savePlannerData(undefined, undefined, nextSkillIds);
+  };
+
+  // Helper for formatting duration
+  const formatDuration = (mins = 0) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    if (h === 0) return `${m} dakika`;
+    if (m === 0) return `${h} saat`;
+    return `${h} saat ${m} dk`;
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        width: '100%', maxWidth: '1350px', margin: '0 auto',
-        fontFamily: "'Outfit', sans-serif", paddingBottom: '3.5rem'
-      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontFamily: 'Outfit, sans-serif' }}
     >
-      {/* ── ÜST BAŞLIK VE AI BANNER ── */}
+      {/* ── Üst Banner & Modül Tanıtımı ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #312e81 50%, #4338ca 100%)',
-        borderRadius: 24, padding: '2rem 2.5rem', color: 'white',
-        boxShadow: '0 14px 40px rgba(15, 23, 42, 0.35)', marginBottom: '1.75rem',
-        position: 'relative', overflow: 'hidden'
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%)',
+        borderRadius: 24, padding: '2rem 2.25rem', color: 'white',
+        boxShadow: '0 16px 40px rgba(49, 46, 129, 0.3)', border: '1px solid rgba(255,255,255,0.15)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem'
       }}>
-        <div style={{ position: 'absolute', top: -30, right: -30, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(99,102,241,0) 70%)', pointerEvents: 'none' }} />
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative', zIndex: 2 }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', padding: '0.4rem 0.95rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', color: '#818cf8' }}>
-              <Brain size={15} color="#818cf8" /> Yapay Zeka Destekli Akıllı Planlayıcı
-            </div>
-            <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2.1rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff' }}>
-              Akıllı & Esnek Çalışma Planlayıcısı ⚡
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.96rem', color: '#c7d2fe', maxWidth: '680px', lineHeight: 1.5 }}>
-              Yetişmeyen hedefleri AI ile esnek olarak yeniden dağıtın, unutmamanız için Spaced Repetition (Aralıklı Tekrar) bildirimleri alın ve Önkoşullu Konu Ağacını çözün!
-            </p>
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', padding: '0.35rem 0.85rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: '#c7d2fe', marginBottom: '0.6rem' }}>
+            <Brain size={14} color="#a855f7" /> Yapay Zeka Destekli Akıllı Planlayıcı
           </div>
+          <h1 style={{ margin: '0 0 0.4rem 0', fontSize: '2rem', fontWeight: 900, color: 'white' }}>
+            Akıllı & Esnek Çalışma Planlayıcısı ⚡
+          </h1>
+          <p style={{ margin: 0, fontSize: '0.92rem', color: '#c7d2fe', maxWidth: '600px', lineHeight: 1.5 }}>
+            ÖSYM müfredatınızdaki eksik ve tamamlanan konulara göre hedefler otomatik oluşturulur, uyamadığınız kalan sorular motivasyonunuz kırılmadan esnek yeniden dağıtılır.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleAutoPlanFromCurriculum}
+            style={{
+              padding: '0.85rem 1.3rem', borderRadius: 16, border: 'none',
+              background: 'linear-gradient(135deg, #ec4899, #d946ef)', color: 'white',
+              fontWeight: 900, fontSize: '0.88rem', cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(236,72,153,0.4)',
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem'
+            }}
+          >
+            <BookMarked size={18} /> Müfredatımdan Otomatik Görev Çek
+          </button>
 
           <button
             onClick={handleAiReschedule}
             style={{
-              display: 'flex', alignItems: 'center', gap: '0.65rem',
-              padding: '0.95rem 1.6rem', borderRadius: 16, border: 'none', cursor: 'pointer',
+              padding: '0.85rem 1.3rem', borderRadius: 16, border: 'none',
               background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
-              fontWeight: 800, fontSize: '0.92rem', boxShadow: '0 6px 20px rgba(16,185,129,0.4)',
-              transition: 'all 0.2s', flexShrink: 0
+              fontWeight: 900, fontSize: '0.88rem', cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(16,185,129,0.4)',
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem'
             }}
           >
-            <Sparkles size={18} /> 🤖 AI ile Otomatik Yeniden Dağıt
+            <Sparkles size={18} /> AI ile Otomatik Yeniden Dağıt
           </button>
         </div>
       </div>
 
-      {/* ── MODÜL SEÇİM SEKMELERİ ── */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {[
-          { id: 'daily', label: '📅 Günlük Görevler & AI Dağıtım', icon: Calendar, color: '#6366f1' },
-          { id: 'srs', label: '🔔 Günün Tekrarları (Spaced Repetition)', icon: Bell, color: '#f59e0b', badge: srsTasks.filter(s => !s.isDone).length },
-          { id: 'skillTree', label: '🔒 Önkoşullu Konu Ağacı (Skill Tree)', icon: Layers, color: '#10b981' }
-        ].map(tab => {
-          const isSel = activeTab === tab.id;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.6rem',
-                padding: '0.8rem 1.4rem', borderRadius: 16, fontWeight: 800, fontSize: '0.9rem',
-                cursor: 'pointer', transition: 'all 0.2s', border: 'none',
-                background: isSel ? 'linear-gradient(135deg, #0f172a, #1e293b)' : '#ffffff',
-                color: isSel ? '#ffffff' : '#64748b',
-                boxShadow: isSel ? '0 4px 16px rgba(15,23,42,0.25)' : '0 2px 8px rgba(0,0,0,0.03)',
-                position: 'relative'
-              }}
-            >
-              <Icon size={18} color={isSel ? '#fbbf24' : tab.color} />
-              {tab.label}
-              {tab.badge > 0 && (
-                <span style={{
-                  padding: '0.15rem 0.55rem', borderRadius: 12, fontSize: '0.72rem', fontWeight: 900,
-                  background: '#ef4444', color: 'white', marginLeft: '0.3rem'
-                }}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* ── Üst Sekme Navigasyonu ── */}
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setActiveTab('daily')}
+          style={{
+            padding: '0.75rem 1.25rem', borderRadius: 14, fontWeight: 800, fontSize: '0.9rem',
+            border: activeTab === 'daily' ? '2px solid #6366f1' : '1px solid #e2e8f0',
+            background: activeTab === 'daily' ? '#4f46e5' : '#ffffff',
+            color: activeTab === 'daily' ? '#ffffff' : '#475569', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: activeTab === 'daily' ? '0 4px 14px rgba(79,70,229,0.3)' : 'none'
+          }}
+        >
+          <Calendar size={18} /> Günlük Görevler & AI Dağıtım
+        </button>
+
+        <button
+          onClick={() => setActiveTab('srs')}
+          style={{
+            padding: '0.75rem 1.25rem', borderRadius: 14, fontWeight: 800, fontSize: '0.9rem',
+            border: activeTab === 'srs' ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+            background: activeTab === 'srs' ? '#d97706' : '#ffffff',
+            color: activeTab === 'srs' ? '#ffffff' : '#475569', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: activeTab === 'srs' ? '0 4px 14px rgba(217,119,6,0.3)' : 'none'
+          }}
+        >
+          <Bell size={18} /> Günün Tekrarları (Spaced Repetition)
+          {srsTasks.filter(t => !t.isDone).length > 0 && (
+            <span style={{ background: '#ef4444', color: 'white', borderRadius: 20, padding: '0.1rem 0.5rem', fontSize: '0.72rem', fontWeight: 900 }}>
+              {srsTasks.filter(t => !t.isDone).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('skillTree')}
+          style={{
+            padding: '0.75rem 1.25rem', borderRadius: 14, fontWeight: 800, fontSize: '0.9rem',
+            border: activeTab === 'skillTree' ? '2px solid #10b981' : '1px solid #e2e8f0',
+            background: activeTab === 'skillTree' ? '#059669' : '#ffffff',
+            color: activeTab === 'skillTree' ? '#ffffff' : '#475569', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: activeTab === 'skillTree' ? '0 4px 14px rgba(5,150,105,0.3)' : 'none'
+          }}
+        >
+          <Layers size={18} /> Önkoşullu Konu Ağacı (Skill Tree)
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reports')}
+          style={{
+            padding: '0.75rem 1.25rem', borderRadius: 14, fontWeight: 800, fontSize: '0.9rem',
+            border: activeTab === 'reports' ? '2px solid #ec4899' : '1px solid #e2e8f0',
+            background: activeTab === 'reports' ? '#db2777' : '#ffffff',
+            color: activeTab === 'reports' ? '#ffffff' : '#475569', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: activeTab === 'reports' ? '0 4px 14px rgba(219,39,119,0.3)' : 'none'
+          }}
+        >
+          <BarChart2 size={18} /> Tarihsel Günlük Raporlarım 📊
+        </button>
       </div>
 
-      {/* ── 1. GÜNLÜK GÖREVLER VE AI YENİDEN PLANLAMA ── */}
+      {/* ── 1. GÜNLÜK GÖREVLER & AI DAĞITIM TABI ── */}
       {activeTab === 'daily' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem' }}>
-          
-          {/* Sol Kolon: Görev Listesi */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
           <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>Bugünkü Çalışma Hedefleri</h2>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.84rem', color: '#64748b' }}>Tamamlayamadığınız kalan sorular AI butonu ile esnek olarak dağıtılır.</p>
-              </div>
-            </div>
+            <h2 style={{ margin: '0 0 0.3rem 0', fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
+              Bugünkü Çalışma Hedefleri
+            </h2>
+            <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.88rem', color: '#64748b' }}>
+              Tamamlayamadığınız kalan sorular AI butonu ile esnek olarak dağıtılır.
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {dailyTasks.map(task => {
-                const pct = Math.round((task.completedCount / task.targetCount) * 100);
-                const isDone = task.completedCount >= task.targetCount;
+              {dailyTasks.map(t => {
+                const percent = Math.min(100, Math.round((t.completedCount / t.targetCount) * 100));
+                const isFinished = t.status === 'completed';
+
                 return (
-                  <motion.div
-                    key={task.id}
-                    layout
+                  <div
+                    key={t.id}
                     style={{
-                      background: isDone ? '#f0fdf4' : task.status === 'rescheduled' ? '#fffbeb' : '#f8fafc',
-                      border: isDone ? '1.5px solid #10b981' : task.status === 'rescheduled' ? '1px solid #fde68a' : '1px solid #e2e8f0',
-                      borderRadius: 16, padding: '1.1rem 1.35rem',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem'
+                      padding: '1rem 1.25rem', borderRadius: 16,
+                      background: isFinished ? '#f0fdf4' : '#f8fafc',
+                      border: isFinished ? '1.5px solid #a7f3d0' : '1px solid #e2e8f0',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                        <span style={{ padding: '0.15rem 0.55rem', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, background: isDone ? '#dcfce7' : '#e0e7ff', color: isDone ? '#15803d' : '#3730a3' }}>
-                          {task.day}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <span style={{
+                          padding: '0.15rem 0.55rem', borderRadius: 8, fontSize: '0.7rem', fontWeight: 800,
+                          background: t.day === 'Bugün' ? '#e0e7ff' : '#fef3c7',
+                          color: t.day === 'Bugün' ? '#4338ca' : '#b45309'
+                        }}>
+                          {t.day}
                         </span>
-                        {task.status === 'rescheduled' && (
-                          <span style={{ padding: '0.15rem 0.55rem', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, background: '#fef3c7', color: '#b45309' }}>
-                            🤖 AI Yeniden Planlandı
-                          </span>
-                        )}
-                        <h4 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: isDone ? '#166534' : '#0f172a', textDecoration: isDone ? 'line-through' : 'none' }}>
-                          {task.topic}
-                        </h4>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>{t.topic}</h4>
                       </div>
 
-                      {/* İlerleme Çubuğu */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
-                        <div style={{ flex: 1, height: 7, borderRadius: 4, background: '#e2e8f0', overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: isDone ? '#10b981' : '#6366f1', transition: 'width 0.3s' }} />
-                        </div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', minWidth: '90px' }}>
-                          {task.completedCount} / {task.targetCount} Soru
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => handleUpdateProgress(t.id, 10)}
+                          style={{ padding: '0.25rem 0.6rem', borderRadius: 8, border: '1px solid #cbd5e1', background: 'white', fontWeight: 800, cursor: 'pointer', fontSize: '0.75rem' }}
+                        >
+                          +10 Soru
+                        </button>
+                        <button
+                          onClick={() => handleUpdateProgress(t.id, 50)}
+                          style={{ padding: '0.25rem 0.6rem', borderRadius: 8, border: '1px solid #6366f1', background: '#eef2ff', color: '#4f46e5', fontWeight: 800, cursor: 'pointer', fontSize: '0.75rem' }}
+                        >
+                          +50 Soru
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(t.id)}
+                          style={{ padding: '0.25rem 0.4rem', borderRadius: 8, border: 'none', background: '#fef2f2', color: '#ef4444', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
 
-                    {/* Hızlı Butonlar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleUpdateProgress(task.id, 10)}
-                        style={{ padding: '0.4rem 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer' }}
-                      >
-                        +10 Soru
-                      </button>
-                      <button
-                        onClick={() => handleUpdateProgress(task.id, 25)}
-                        style={{ padding: '0.4rem 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer' }}
-                      >
-                        +25 Soru
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        style={{ padding: '0.4rem', borderRadius: 8, border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ flex: 1, height: 8, borderRadius: 10, background: '#e2e8f0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${percent}%`, background: isFinished ? '#10b981' : 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 0.3s' }} />
+                      </div>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: isFinished ? '#10b981' : '#475569' }}>
+                        {t.completedCount} / {t.targetCount} Soru ({percent}%)
+                      </span>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Sağ Kolon: Yeni Görev Ekle & AI Tüyo */}
+          {/* Sağ Form */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.35rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>Yeni Hedef Ekle</h3>
+            <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>Yeni Hedef Ekle</h3>
               <form onSubmit={handleAddNewTask} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '0.3rem' }}>Ders / Konu Adı:</label>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>Ders / Konu Adı:</label>
                   <input
                     type="text"
+                    required
                     placeholder="Örn: Paragraf Soru Çözümü"
                     value={newTaskTopic}
                     onChange={e => setNewTaskTopic(e.target.value)}
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 10, border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600, outline: 'none' }}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 12, border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600, outline: 'none', background: '#f8fafc' }}
                   />
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '0.3rem' }}>Hedef Soru Miktarı:</label>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>Hedef Soru Miktarı:</label>
                   <input
                     type="number"
                     value={newTaskTarget}
                     onChange={e => setNewTaskTarget(e.target.value)}
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 10, border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600, outline: 'none' }}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 12, border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600, outline: 'none', background: '#f8fafc' }}
                   />
                 </div>
+
                 <button
                   type="submit"
                   style={{
-                    padding: '0.75rem', borderRadius: 12, border: 'none', background: '#1e293b',
-                    color: 'white', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
+                    padding: '0.75rem', borderRadius: 14, border: 'none',
+                    background: '#1e293b', color: 'white', fontWeight: 900, fontSize: '0.88rem',
+                    cursor: 'pointer', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem'
                   }}
                 >
                   <Plus size={16} /> Planlayıcıya Ekle
@@ -457,44 +614,42 @@ const SmartPlanner = () => {
               </form>
             </div>
 
-            <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 20, border: '1px solid #fde68a', padding: '1.25rem' }}>
-              <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '0.92rem', fontWeight: 900, color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                💡 Akıllı Esneklik Tüyosu
+            <div style={{ background: '#fefce8', border: '1.5px solid #fde047', borderRadius: 18, padding: '1.25rem' }}>
+              <h4 style={{ margin: '0 0 0.4rem 0', color: '#b45309', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Zap size={16} color="#d97706" /> Akıllı Esneklik Tüyosu
               </h4>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: '#78350f', lineHeight: 1.4 }}>
-                Bir gün hedefinizi tamamlayamadığınızda kendinizi suçlamayın! <strong>"AI ile Otomatik Yeniden Dağıt"</strong> butonuna basarak kalan soruları motivasyonunuz bozulmadan haftanın diğer günlerine esnetin.
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#92400e', lineHeight: 1.5 }}>
+                Bir gün hedefinizi tamamlayamadığınızda kendinizi suçlamayın! <b>"AI ile Otomatik Yeniden Dağıt"</b> butonuna basarak kalan soruları motivasyonunuz acıımadan haftanın diğer günlerine esnetin.
               </p>
             </div>
           </div>
-
         </div>
       )}
 
-      {/* ── 2. ARALIKLI TEKRAR (SPACED REPETITION - SRS) ── */}
+      {/* ── 2. ARALIKLI TEKRAR (SRS) TABI ── */}
       {activeTab === 'srs' && (
         <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: '0 0 0.3rem 0', fontSize: '1.3rem', fontWeight: 900, color: '#0f172a' }}>
-              Aralıklı Tekrar (Spaced Repetition) Takvimi 🧠
-            </h2>
-            <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
-              Tamamladığınız veya öğrendiğiniz her konu kalıcı hafızaya aktarılması için <strong>+1, +3, +7 ve +30 gün</strong> sonra otomatik olarak tekrar görevi olarak önünüze düşer.
-            </p>
-          </div>
+          <h2 style={{ margin: '0 0 0.3rem 0', fontSize: '1.3rem', fontWeight: 900, color: '#0f172a' }}>
+            Aralıklı Tekrar Sistemi (Spaced Repetition) 🧠
+          </h2>
+          <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: '#64748b' }}>
+            Öğrenilen bir konu 1, 3, 7 ve 30. günlerde tekrar edilmediğinde %80 oranında unutulur. Sistem unutturmamak için otomatik bildirimler üretir.
+          </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
             {srsTasks.map(item => (
               <div
                 key={item.id}
                 style={{
-                  background: item.isDone ? '#f0fdf4' : '#ffffff',
-                  border: item.isDone ? '1.5px solid #10b981' : '1px solid #cbd5e1',
-                  borderRadius: 16, padding: '1.2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                  padding: '1.25rem', borderRadius: 18,
+                  background: item.isDone ? '#f0fdf4' : '#fffbeb',
+                  border: item.isDone ? '1.5px solid #a7f3d0' : '1.5px solid #fde68a',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                    <span style={{ padding: '0.2rem 0.6rem', borderRadius: 8, fontSize: '0.72rem', fontWeight: 800, background: '#fef3c7', color: '#b45309' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ padding: '0.15rem 0.6rem', borderRadius: 12, background: item.isDone ? '#dcfce7' : '#fef3c7', color: item.isDone ? '#15803d' : '#b45309', fontSize: '0.72rem', fontWeight: 800 }}>
                       {item.type}
                     </span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
@@ -560,7 +715,6 @@ const SmartPlanner = () => {
             </div>
           </div>
 
-          {/* Yetenek Ağacı Düğümleri */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
             {SKILL_TREE_DATA[selectedSkillSubject].map((skill, index) => {
               const isCompleted = completedSkillIds.includes(skill.id);
@@ -628,6 +782,111 @@ const SmartPlanner = () => {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── 4. TARİHSEL GÜNLÜK RAPORLARIM TABI ── */}
+      {activeTab === 'reports' && (
+        <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: '0 0 0.3rem 0', fontSize: '1.3rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart2 size={24} color="#ec4899" /> Günlük Tarihsel Çalışma Raporlarım 📊
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+              Her gün otomatik hesaplanan geçmiş çalışma saatleriniz, çözülen soru sayılarınız ve çalıştığınız konuların tarihsel arşivi.
+            </p>
+          </div>
+
+          {dailyReports.length === 0 ? (
+            <div style={{ padding: '3rem 1.5rem', textAlign: 'center', background: '#f8fafc', borderRadius: 16, border: '1.5px dashed #cbd5e1' }}>
+              <Activity size={40} color="#94a3b8" style={{ margin: '0 auto 0.75rem', opacity: 0.6 }} />
+              <h3 style={{ margin: '0 0 0.3rem', fontSize: '1.1rem', fontWeight: 800, color: '#334155' }}>Henüz Günlük Rapor Kaydı Bulunmuyor</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Kronometrenizi açıp ders çalışmaya başladığınızda günlük çalışma ve soru raporlarınız burada tarihsel arşivlenecektir.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {dailyReports.map((report, idx) => {
+                const isToday = report.date === new Date().toISOString().split('T')[0];
+                const formattedDate = new Date(report.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+                const subjectsArr = Array.from(report.subjects || []);
+
+                return (
+                  <motion.div
+                    key={report.date}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    style={{
+                      padding: '1.5rem', borderRadius: 18,
+                      background: isToday ? 'linear-gradient(135deg, #fefce8, #fffbeb)' : '#ffffff',
+                      border: isToday ? '2px solid #fde047' : '1px solid #e2e8f0',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900,
+                          background: isToday ? '#f59e0b' : '#6366f1', color: 'white'
+                        }}>
+                          {isToday ? 'Günün Raporu (Bugün)' : idx === 1 ? 'Dünün Raporu' : formattedDate}
+                        </span>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>{formattedDate}</h3>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ background: '#f0fdf4', padding: '0.4rem 0.85rem', borderRadius: 12, border: '1px solid #bbf7d0' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 800, textTransform: 'uppercase', display: 'block' }}>Çalışma Süresi</span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#15803d' }}>⏱️ {formatDuration(report.totalMinutes)}</span>
+                        </div>
+                        <div style={{ background: '#eef2ff', padding: '0.4rem 0.85rem', borderRadius: 12, border: '1px solid #c7d2fe' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#3730a3', fontWeight: 800, textTransform: 'uppercase', display: 'block' }}>Çözülen Soru (Tahmini)</span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#4338ca' }}>🎯 {report.totalQuestions} Soru</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Çalışılan Dersler & Konular */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '0.35rem' }}>
+                          📚 Çalışılan Dersler:
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {subjectsArr.length === 0 ? <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Genel Çalışma</span> : subjectsArr.map(subj => (
+                            <span key={subj} style={{ padding: '0.2rem 0.6rem', borderRadius: 10, background: '#e2e8f0', color: '#334155', fontSize: '0.78rem', fontWeight: 700 }}>
+                              {subj}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '0.35rem' }}>
+                          🎯 İşlenen Konular & Seanslar:
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {report.topics.length === 0 ? <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Konu Notu Yok</span> : report.topics.map(top => (
+                            <span key={top} style={{ padding: '0.2rem 0.6rem', borderRadius: 10, background: '#e0e7ff', color: '#4338ca', fontSize: '0.78rem', fontWeight: 700 }}>
+                              {top}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI Değerlendirme & Özet Raporu */}
+                    <div style={{ background: '#f8fafc', padding: '0.85rem 1.1rem', borderRadius: 14, borderLeft: '4px solid #6366f1' }}>
+                      <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155', lineHeight: 1.5, fontWeight: 600 }}>
+                        🤖 <b>AI Günlük Analiz Raporu:</b> {report.date} tarihinde toplam <b>{formatDuration(report.totalMinutes)}</b> çalışarak tahmini <b>{report.totalQuestions} soru</b> çözdün.{' '}
+                        {report.totalMinutes >= 180 ? 'Harika bir performans sergiledin, hedeflerine adım adım yaklaşıyorsun! 🔥' : 'Düzenli çalışmayı sürdürerek yarın daha yüksek hedeflere ulaşabilirsin! 💪'}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </motion.div>

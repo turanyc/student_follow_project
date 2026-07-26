@@ -29,7 +29,6 @@ const AtesIcon = () => (
 const NAV_ITEMS = [
   { path: '/student/smart-planner',icon: Brain,       label: 'Akıllı Planlayıcı ⚡', color: '#a855f7' },
   { path: '/student/study-map',    icon: Flame,        label: 'Anlık Çalışma Haritan', color: '#38bdf8' },
-  { path: '/student/messages',     icon: MessageSquare,label: 'Mesajlarım 💬',        color: '#8b5cf6' },
   { path: '/student/leaderboard',  icon: AtesIcon,     label: 'Canlı Liderlik & Yarışma', color: '#f59e0b' },
   { path: '/student/planner',      icon: Calendar,     label: 'Planlar & Görevler', color: '#6366f1' },
   { path: '/student/goals',        icon: Target,       label: 'Hedeflerim',         color: '#3b82f6' },
