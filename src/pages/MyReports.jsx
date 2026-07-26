@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, AlertTriangle, TrendingDown, BookOpen, CheckCircle, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, AlertTriangle, TrendingDown, BookOpen, CheckCircle, BarChart2, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import Analytics from './Analytics';
 
 const TABS = [
   { id: 'trial-reports', label: 'Deneme Raporlarım', icon: FileText },
+  { id: 'analytics',     label: 'İstatistik & Analiz', icon: TrendingUp },
 ];
 
 const MyReports = () => {
@@ -300,6 +302,13 @@ const MyReports = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* İstatistik & Analiz Tabı */}
+      {activeTab === 'analytics' && (
+        <div style={{ marginTop: '1rem' }}>
+          <Analytics />
         </div>
       )}
     </motion.div>

@@ -418,6 +418,18 @@ const CoachDashboard = () => {
     if (!text?.trim()) return;
     await updateDoc(doc(db, 'users', studentId), { coachRecommendation: text });
     setRecommendations(p => ({ ...p, [studentId]: '' }));
+
+    // Send real-time notification to student
+    try {
+      await addDoc(collection(db, 'users', studentId, 'notifications'), {
+        title: '💡 Koçundan Yeni Tavsiye Var!',
+        message: `Koçun sana haftalık çalışma yönlendirmesi iletti: "${text.trim()}"`,
+        type: 'advice',
+        isRead: false,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) { console.error(err); }
+
     Swal.fire({ icon: 'success', title: 'Tavsiye gönderildi!', timer: 1400, showConfirmButton: false });
   };
 
@@ -427,6 +439,18 @@ const CoachDashboard = () => {
     if (!text?.trim()) return;
     await updateDoc(doc(db, 'users', studentId, 'goals', goalId), { coachAdvice: text });
     setGoalAdvices(p => ({ ...p, [key]: '' }));
+
+    // Send real-time notification to student
+    try {
+      await addDoc(collection(db, 'users', studentId, 'notifications'), {
+        title: '🎯 Hedefine Özel Koç Notu!',
+        message: `Koçun hedefine özel yönlendirme yazdı: "${text.trim()}"`,
+        type: 'advice',
+        isRead: false,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) { console.error(err); }
+
     Swal.fire({ icon: 'success', title: 'Hedef tavsiyesi gönderildi!', timer: 1400, showConfirmButton: false });
   };
 
@@ -440,6 +464,13 @@ const CoachDashboard = () => {
     });
     try {
       await updateDoc(doc(db, 'users', selectedMsgStudent.id), { coachId: currentUser.uid });
+      await addDoc(collection(db, 'users', selectedMsgStudent.id, 'notifications'), {
+        title: '💬 Koçundan Yeni Mesaj!',
+        message: `Koçun sana mesaj gönderdi: "${text.trim()}"`,
+        type: 'chat',
+        isRead: false,
+        createdAt: serverTimestamp()
+      });
     } catch (_) {}
   };
 

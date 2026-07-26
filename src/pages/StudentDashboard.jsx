@@ -25,6 +25,7 @@ import ProfileEditModal from '../components/ProfileEditModal';
 const NAV_ITEMS = [
   { path: '/student/smart-planner',icon: Brain,       label: 'Akıllı Planlayıcı ⚡', color: '#a855f7' },
   { path: '/student/study-map',    icon: Flame,        label: 'Anlık Çalışma Haritan', color: '#38bdf8' },
+  { path: '/student/messages',     icon: MessageSquare,label: 'Mesajlarım 💬',        color: '#8b5cf6' },
   { path: '/student/leaderboard',  icon: Trophy,       label: 'Canlı Liderlik & Yarışma', color: '#3b82f6' },
   { path: '/student/planner',      icon: Calendar,     label: 'Planlar & Görevler', color: '#6366f1' },
   { path: '/student/goals',        icon: Target,       label: 'Hedeflerim',         color: '#3b82f6' },
@@ -34,7 +35,6 @@ const NAV_ITEMS = [
   { path: '/student/trial-exams',  icon: PenTool,      label: 'Deneme Netleri',     color: '#38bdf8' },
   { path: '/student/reports',      icon: BarChart2,    label: 'Raporlarım',         color: '#f97316' },
   { path: '/student/osym-curriculum', icon: BookOpen,  label: 'ÖSYM Müfredatı',     color: '#3b82f6' },
-  { path: '/student/analytics',    icon: BarChart2,    label: 'İstatistik & Analiz', color: '#6366f1' },
   { path: '/student/mood',         icon: Heart,        label: 'Duygu Analizi',      color: '#f43f5e' },
   { path: '/student/discovery',    icon: Compass,      label: 'Keşfet & Test',      color: '#38bdf8' },
   { path: '/student/coach-advice', icon: BookOpen,     label: 'Koçun Tavsiyeleri',  color: '#6366f1' },
@@ -166,22 +166,37 @@ const StudentDashboard = ({ children }) => {
 
   useEffect(() => {
     if (!currentUser) return;
-    const unsub = onSnapshot(query(collection(db, 'users', currentUser.uid, 'notifications'), orderBy('createdAt', 'desc')), (snap) => {
-      const now = Date.now();
-      const oneWeek = 7 * 24 * 60 * 60 * 1000;
-      const notifs = [];
-      snap.forEach(d => {
+    let listA = [];
+    let listB = [];
+
+    const updateAllNotifs = () => {
+      const mergedMap = new Map();
+      [...listA, ...listB].forEach(n => mergedMap.set(n.id, n));
+      const sorted = Array.from(mergedMap.values()).sort((a, b) => (b.time || 0) - (a.time || 0));
+      setNotifications(sorted);
+    };
+
+    // 1. Personal user notifications subcollection listener
+    const unsub1 = onSnapshot(query(collection(db, 'users', currentUser.uid, 'notifications'), orderBy('createdAt', 'desc'), limit(30)), (snap) => {
+      listA = snap.docs.map(d => {
         const data = d.data();
-        const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || now);
-        if (now - createdAt > oneWeek) {
-          try { deleteDoc(doc(db, 'users', currentUser.uid, 'notifications', d.id)); } catch (e) {}
-        } else {
-          notifs.push({ id: d.id, ...data });
-        }
+        const t = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now());
+        return { id: d.id, message: data.message || data.title, time: t, ...data };
       });
-      setNotifications(notifs);
+      updateAllNotifs();
     });
-    return () => unsub();
+
+    // 2. Global notifications listener filtered for this user
+    const unsub2 = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', currentUser.uid), limit(30)), (snap) => {
+      listB = snap.docs.map(d => {
+        const data = d.data();
+        const t = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now());
+        return { id: d.id, message: data.message, time: t, ...data };
+      });
+      updateAllNotifs();
+    });
+
+    return () => { unsub1(); unsub2(); };
   }, [currentUser]);
 
   useEffect(() => {

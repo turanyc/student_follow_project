@@ -26,6 +26,7 @@ import LiveLeaderboard from './pages/LiveLeaderboard';
 import MyReports from './pages/MyReports';
 import UniSearchRobot from './components/UniSearchRobot';
 import SmartPlanner from './pages/SmartPlanner';
+import StudentMessages from './pages/StudentMessages';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { currentUser, userRole, loading } = useAuth();
@@ -83,8 +84,10 @@ const AnimatedRoutes = () => {
         <Route path="/student/study-methods" element={<ProtectedRoute allowedRole="student"><StudentDashboard><StudyMethodGuide /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/leaderboard" element={<ProtectedRoute allowedRole="student"><StudentDashboard><LiveLeaderboard /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/reports" element={<ProtectedRoute allowedRole="student"><StudentDashboard><MyReports /></StudentDashboard></ProtectedRoute>} />
+        <Route path="/student/analytics" element={<ProtectedRoute allowedRole="student"><StudentDashboard><MyReports /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/uni-search" element={<ProtectedRoute allowedRole="student"><StudentDashboard><UniSearchRobot /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/smart-planner" element={<ProtectedRoute allowedRole="student"><StudentDashboard><SmartPlanner /></StudentDashboard></ProtectedRoute>} />
+        <Route path="/student/messages" element={<ProtectedRoute allowedRole="student"><StudentDashboard><StudentMessages /></StudentDashboard></ProtectedRoute>} />
 
         {/* Coach Routes */}
         <Route path="/coach" element={<ProtectedRoute allowedRole="coach"><CoachDashboard /></ProtectedRoute>} />
