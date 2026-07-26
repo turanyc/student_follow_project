@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen, Flame, CheckCircle2, Circle, Search, Filter, X,
-  Award, Sparkles, Target, Zap, ChevronDown, ChevronRight,
-  TrendingUp, BarChart3, Star, CheckSquare, Layers
+  BookOpen, CheckCircle2, Circle, Search, X,
+  Award, Sparkles, Target, RefreshCw, CheckSquare, Layers, HelpCircle
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Swal from 'sweetalert2';
-import { CURRICULUM_DATA } from '../data/curriculumData';
+import { CURRICULUM_DATA, getSubjectColor } from '../data/curriculumData';
 
 const OsymCurriculum = () => {
   const { currentUser } = useAuth();
@@ -88,6 +87,16 @@ const OsymCurriculum = () => {
     });
   }, [activeTopics, selectedSubject, searchQuery]);
 
+  // Group topics by subject for clean section rendering
+  const groupedFilteredTopics = useMemo(() => {
+    const groups = {};
+    filteredTopics.forEach(t => {
+      if (!groups[t.subject]) groups[t.subject] = [];
+      groups[t.subject].push(t);
+    });
+    return groups;
+  }, [filteredTopics]);
+
   // Calculate overall & subject completion stats
   const stats = useMemo(() => {
     const total = activeTopics.length;
@@ -143,49 +152,48 @@ const OsymCurriculum = () => {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
-        width: '100%', maxWidth: '1400px', margin: '0 auto',
-        fontFamily: "'Inter', sans-serif", paddingBottom: '3rem'
+        width: '100%', maxWidth: '1300px', margin: '0 auto',
+        fontFamily: "'Outfit', sans-serif", paddingBottom: '3rem'
       }}
     >
       {/* ── ÜST BAŞLIK VE HEDEF BANNER ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
-        borderRadius: 24, padding: '2rem 2.5rem', color: 'white',
-        boxShadow: '0 12px 36px rgba(49, 46, 129, 0.25)', marginBottom: '2rem',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)',
+        borderRadius: 22, padding: '1.75rem 2.25rem', color: 'white',
+        boxShadow: '0 12px 36px rgba(15, 23, 42, 0.3)', marginBottom: '1.5rem',
         position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{ position: 'absolute', top: -40, right: -40, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(251,191,36,0.18) 0%, rgba(251,191,36,0) 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -30, right: -30, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(99,102,241,0) 70%)', pointerEvents: 'none' }} />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative', zIndex: 2 }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '0.4rem 0.9rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem' }}>
-              <Sparkles size={14} color="#fbbf24" /> ÖSYM & Resmi Sınav Müfredatları
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', padding: '0.35rem 0.85rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', color: '#fbbf24' }}>
+              <Sparkles size={14} color="#fbbf24" /> ÖSYM & Resmi Sınav Müfredat Takibi
             </div>
-            <h1 style={{ margin: '0 0 0.6rem 0', fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.2, color: "white" }}>
-              ÖSYM & Resmi Sınav Müfredat Takibi
+            <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '1.85rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff' }}>
+              Müfredat & Konu İlerleme Haritası 📚
             </h1>
-            <p style={{ margin: 0, fontSize: '0.96rem', color: '#c7d2fe', maxWidth: '650px', lineHeight: 1.5 }}>
-              YKS (TYT-AYT), LGS ve KPSS (Önlisans, Lisans, Ortaöğretim) resmi müfredatlarını adım adım takip et, tamamladığın konuları işaretleyerek hedefine tam isabetle ilerle!
+            <p style={{ margin: 0, fontSize: '0.92rem', color: '#c7d2fe', maxWidth: '650px', lineHeight: 1.5 }}>
+              YKS, LGS ve KPSS resmi konularını sadeleştirilmiş çizgi listesinden kolayca takip et, tamamladığın her konuyu tek tıkla işaretle!
             </p>
           </div>
 
-          {/* İlerleme ve Yüzde Kartı */}
+          {/* İlerleme ve Yüzde Kutusu */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: 20,
-            padding: '1.25rem 1.75rem', minWidth: '240px', textAlign: 'center'
+            background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(14px)',
+            border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: 18,
+            padding: '1.1rem 1.6rem', minWidth: '220px', textAlign: 'center'
           }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e0e7ff', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-              {selectedSubTab} Genel İlerlemem
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#e0e7ff', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
+              {selectedSubTab} Tamamlanma Oranı
             </div>
-            <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#fbbf24', lineHeight: 1 }}>
+            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#fbbf24', lineHeight: 1 }}>
               %{stats.pct}
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#c7d2fe', marginTop: '0.35rem', fontWeight: 600 }}>
+            <div style={{ fontSize: '0.78rem', color: '#c7d2fe', marginTop: '0.3rem', fontWeight: 600 }}>
               {stats.completed} / {stats.total} konu tamamlandı
             </div>
-            {/* Küçük İlerleme Çubuğu */}
-            <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.2)', marginTop: '0.75rem', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.2)', marginTop: '0.65rem', overflow: 'hidden' }}>
               <div style={{ width: `${stats.pct}%`, height: '100%', background: 'linear-gradient(90deg, #fbbf24, #10b981)', transition: 'width 0.4s ease' }} />
             </div>
           </div>
@@ -193,13 +201,14 @@ const OsymCurriculum = () => {
       </div>
 
       {/* ── SINAV GRUBU VE ALT MÜFREDAT SEÇİM TABLARI ── */}
-      <div style={{ background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0', padding: '1.25rem 1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', marginBottom: '1.75rem' }}>
+      <div style={{ background: '#ffffff', borderRadius: 18, border: '1px solid #e2e8f0', padding: '1.1rem 1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', marginBottom: '1.25rem' }}>
+        
         {/* Ana Sınav Grupları */}
-        <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.85rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
           {[
             { id: 'YKS', label: 'YKS (TYT / AYT)', icon: Award, color: '#6366f1' },
             { id: 'LGS', label: 'LGS (Lise Geçiş)', icon: Target, color: '#10b981' },
-            { id: 'KPSS', label: 'KPSS (Önlisans / Lisans / Ortaöğretim)', icon: BookOpen, color: '#f59e0b' }
+            { id: 'KPSS', label: 'KPSS (Lisans / Önlisans / Lise)', icon: BookOpen, color: '#f59e0b' }
           ].map(group => {
             const Icon = group.icon;
             const isSelected = selectedExamGroup === group.id;
@@ -208,33 +217,33 @@ const OsymCurriculum = () => {
                 key={group.id}
                 onClick={() => handleExamGroupChange(group.id)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '0.6rem',
-                  padding: '0.75rem 1.4rem', borderRadius: 14, fontWeight: 800, fontSize: '0.95rem',
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.65rem 1.25rem', borderRadius: 12, fontWeight: 800, fontSize: '0.9rem',
                   cursor: 'pointer', transition: 'all 0.2s', border: 'none',
-                  background: isSelected ? 'linear-gradient(135deg, #1e293b, #334155)' : '#f8fafc',
+                  background: isSelected ? 'linear-gradient(135deg, #0f172a, #1e293b)' : '#f8fafc',
                   color: isSelected ? 'white' : '#64748b',
-                  boxShadow: isSelected ? '0 4px 12px rgba(30,41,59,0.2)' : 'none'
+                  boxShadow: isSelected ? '0 4px 12px rgba(15,23,42,0.2)' : 'none'
                 }}
               >
-                <Icon size={18} color={isSelected ? '#fbbf24' : group.color} />
+                <Icon size={16} color={isSelected ? '#fbbf24' : group.color} />
                 {group.label}
               </button>
             );
           })}
         </div>
 
-        {/* Alt Sınav (TYT, AYT, KPSS Lisans vs.) Tabları */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        {/* Alt Sınav Tabları & Sırfırla */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {selectedExamGroup === 'YKS' && [
-              { id: 'TYT', label: 'TYT Konuları (1. Oturum)' },
-              { id: 'AYT', label: 'AYT Konuları (2. Oturum)' }
+              { id: 'TYT', label: 'TYT Konuları' },
+              { id: 'AYT', label: 'AYT Konuları' }
             ].map(sub => (
               <button
                 key={sub.id}
                 onClick={() => { setSelectedSubTab(sub.id); setSelectedSubject('Tümü'); }}
                 style={{
-                  padding: '0.55rem 1.2rem', borderRadius: 12, fontWeight: 800, fontSize: '0.88rem',
+                  padding: '0.45rem 1.1rem', borderRadius: 10, fontWeight: 800, fontSize: '0.84rem',
                   cursor: 'pointer', transition: 'all 0.2s',
                   border: selectedSubTab === sub.id ? '2px solid #6366f1' : '1px solid #e2e8f0',
                   background: selectedSubTab === sub.id ? '#eef2ff' : '#ffffff',
@@ -246,26 +255,21 @@ const OsymCurriculum = () => {
             ))}
 
             {selectedExamGroup === 'LGS' && (
-              <button
-                style={{
-                  padding: '0.55rem 1.2rem', borderRadius: 12, fontWeight: 800, fontSize: '0.88rem',
-                  border: '2px solid #10b981', background: '#ecfdf5', color: '#065f46'
-                }}
-              >
-                LGS Resmi Sınav Konuları
+              <button style={{ padding: '0.45rem 1.1rem', borderRadius: 10, fontWeight: 800, fontSize: '0.84rem', border: '2px solid #10b981', background: '#ecfdf5', color: '#065f46' }}>
+                LGS Sınav Konuları
               </button>
             )}
 
             {selectedExamGroup === 'KPSS' && [
-              { id: 'KPSS Lisans', label: 'KPSS Lisans Müfredatı' },
-              { id: 'KPSS Önlisans', label: 'KPSS Önlisans Müfredatı' },
-              { id: 'KPSS Ortaöğretim', label: 'KPSS Ortaöğretim (Lise) Müfredatı' }
+              { id: 'KPSS Lisans', label: 'KPSS Lisans' },
+              { id: 'KPSS Önlisans', label: 'KPSS Önlisans' },
+              { id: 'KPSS Ortaöğretim', label: 'KPSS Ortaöğretim' }
             ].map(sub => (
               <button
                 key={sub.id}
                 onClick={() => { setSelectedSubTab(sub.id); setSelectedSubject('Tümü'); }}
                 style={{
-                  padding: '0.55rem 1.2rem', borderRadius: 12, fontWeight: 800, fontSize: '0.88rem',
+                  padding: '0.45rem 1.1rem', borderRadius: 10, fontWeight: 800, fontSize: '0.84rem',
                   cursor: 'pointer', transition: 'all 0.2s',
                   border: selectedSubTab === sub.id ? '2px solid #f59e0b' : '1px solid #e2e8f0',
                   background: selectedSubTab === sub.id ? '#fffbeb' : '#ffffff',
@@ -280,35 +284,37 @@ const OsymCurriculum = () => {
           <button
             onClick={handleResetProgress}
             style={{
-              padding: '0.45rem 1rem', borderRadius: 10, border: '1px solid #fecaca',
-              background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: '0.8rem',
+              padding: '0.4rem 0.85rem', borderRadius: 10, border: '1px solid #fecaca',
+              background: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.78rem',
               cursor: 'pointer', transition: 'all 0.2s'
             }}
           >
-            İşaretlemeleri Sıfırla
+            Sıfırla
           </button>
         </div>
       </div>
 
-      {/* ── ARAMA, DERS FİLTRESİ VE SIK ÇIKAN TOGGLE ── */}
+      {/* ── ARAMA VE DERS FİLTRESİ ── */}
       <div style={{
-        background: '#ffffff', borderRadius: 20, border: '1px solid #e2e8f0',
-        padding: '1.25rem 1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', marginBottom: '1.75rem',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem'
+        background: '#ffffff', borderRadius: 18, border: '1px solid #e2e8f0',
+        padding: '1rem 1.4rem', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', marginBottom: '1.25rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem'
       }}>
         {/* Dersler Pill Listesi */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
+        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', flex: 1 }}>
           {availableSubjects.map(sub => {
             const isSel = selectedSubject === sub;
+            const subColors = getSubjectColor(sub);
             return (
               <button
                 key={sub}
                 onClick={() => setSelectedSubject(sub)}
                 style={{
-                  padding: '0.45rem 1rem', borderRadius: 12, fontWeight: 800, fontSize: '0.82rem',
-                  cursor: 'pointer', transition: 'all 0.2s', border: 'none',
-                  background: isSel ? '#1e293b' : '#f1f5f9',
-                  color: isSel ? '#ffffff' : '#64748b'
+                  padding: '0.4rem 0.95rem', borderRadius: 10, fontWeight: 800, fontSize: '0.8rem',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  border: isSel ? `2px solid ${subColors.main}` : '1px solid #e2e8f0',
+                  background: isSel ? subColors.bg : '#f8fafc',
+                  color: isSel ? subColors.text : '#64748b'
                 }}
               >
                 {sub}
@@ -318,105 +324,141 @@ const OsymCurriculum = () => {
         </div>
 
         {/* Arama Barı */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', minWidth: '260px', flex: 1 }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Konu veya ders adı ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+        <div style={{ position: 'relative', minWidth: '240px' }}>
+          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text"
+            placeholder="Konu veya ders ara..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%', padding: searchQuery ? '0.55rem 2rem 0.55rem 2.2rem' : '0.55rem 0.9rem 0.55rem 2.2rem',
+              borderRadius: 10, border: '1px solid #cbd5e1', fontSize: '0.85rem',
+              fontWeight: 600, outline: 'none', background: '#f8fafc'
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
               style={{
-                width: '100%', padding: searchQuery ? '0.6rem 2.2rem 0.6rem 2.4rem' : '0.6rem 1rem 0.6rem 2.4rem',
-                borderRadius: 12, border: '1px solid #cbd5e1', fontSize: '0.88rem',
-                fontWeight: 600, outline: 'none', background: '#f8fafc'
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8'
               }}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
-                  padding: 2, display: 'flex', alignItems: 'center'
-                }}
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ── KONULAR VE CHECKLIST LİSTESİ ── */}
-      {filteredTopics.length === 0 ? (
-        <div style={{ background: '#ffffff', borderRadius: 20, padding: '4rem 2rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b' }}>
-          <Target size={48} color="#94a3b8" style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 800, color: '#334155' }}>Aradığınız Kriterlerde Konu Bulunamadı</h3>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>Filtreleri veya arama kelimenizi sıfırlayarak tekrar deneyebilirsiniz.</p>
+      {/* ── SADELEŞTİRİLMİŞ ÇİZGİ TARZI DERS/KONU LİSTESİ ── */}
+      {Object.keys(groupedFilteredTopics).length === 0 ? (
+        <div style={{ background: '#ffffff', borderRadius: 18, padding: '3.5rem 2rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b' }}>
+          <Target size={44} color="#94a3b8" style={{ margin: '0 auto 0.85rem auto', opacity: 0.5 }} />
+          <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1.1rem', fontWeight: 800, color: '#334155' }}>Aradığınız Kriterlerde Konu Bulunamadı</h3>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>Filtreleri veya arama teriminizi değiştirerek tekrar deneyebilirsiniz.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1rem' }}>
-          {filteredTopics.map((topic, idx) => {
-            const isChecked = !!checkedTopics[topic.id];
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {Object.entries(groupedFilteredTopics).map(([subjectName, topicsList]) => {
+            const subColors = getSubjectColor(subjectName);
+            const completedCount = topicsList.filter(t => checkedTopics[t.id]).length;
+            const subjectPct = Math.round((completedCount / topicsList.length) * 100);
+
             return (
-              <motion.div
-                key={topic.id}
-                layout
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}
-                onClick={() => toggleTopic(topic.id)}
+              <div
+                key={subjectName}
                 style={{
-                  background: isChecked ? '#f0fdf4' : '#ffffff',
-                  border: isChecked ? '1.5px solid #10b981' : '1px solid #cbd5e1',
-                  borderRadius: 18, padding: '1.25rem 1.4rem', cursor: 'pointer',
-                  position: 'relative', transition: 'all 0.2s',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                  background: '#ffffff', borderRadius: 16, border: `1px solid ${subColors.border}`,
+                  overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
                 }}
               >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.65rem' }}>
-                    <span style={{
-                      fontSize: '0.74rem', fontWeight: 800, padding: '0.2rem 0.65rem',
-                      borderRadius: 8, background: isChecked ? '#dcfce7' : '#f1f5f9',
-                      color: isChecked ? '#15803d' : '#475569', textTransform: 'uppercase'
-                    }}>
-                      {topic.subject}
+                {/* Ders Başlığı Şeridi */}
+                <div style={{
+                  padding: '0.85rem 1.35rem', background: subColors.bg,
+                  borderBottom: `1px solid ${subColors.border}`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: subColors.main }} />
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: subColors.text }}>
+                      {subjectName}
+                    </h3>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: subColors.text }}>
+                      {completedCount} / {topicsList.length} (%{subjectPct})
                     </span>
-                  </div>
-
-                  <h4 style={{
-                    margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800,
-                    color: isChecked ? '#166534' : '#1e293b', lineHeight: 1.35,
-                    textDecoration: isChecked ? 'line-through' : 'none'
-                  }}>
-                    {topic.name}
-                  </h4>
-
-                  {topic.note && (
-                    <p style={{ margin: 0, fontSize: '0.82rem', color: isChecked ? '#15803d' : '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      💡 {topic.note}
-                    </p>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', paddingTop: '0.75rem', borderTop: isChecked ? '1px solid #bbf7d0' : '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: isChecked ? '#166534' : '#94a3b8' }}>
-                    {isChecked ? '🎉 Konu Tamamlandı (Çalışıldı)' : '⏳ Henüz Çalışılmadı'}
-                  </span>
-
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    background: isChecked ? '#10b981' : '#f8fafc',
-                    border: isChecked ? 'none' : '2px solid #cbd5e1',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}>
-                    {isChecked && <CheckCircle2 size={18} color="white" />}
+                    <div style={{ width: 80, height: 6, borderRadius: 3, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                      <div style={{ width: `${subjectPct}%`, height: '100%', background: subColors.main, transition: 'width 0.3s' }} />
+                    </div>
                   </div>
                 </div>
-              </motion.div>
+
+                {/* Konuların Tek Satır Çizgi Listesi */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {topicsList.map((topic, index) => {
+                    const isChecked = !!checkedTopics[topic.id];
+                    return (
+                      <div
+                        key={topic.id}
+                        onClick={() => toggleTopic(topic.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '0.75rem 1.35rem', cursor: 'pointer',
+                          background: isChecked ? '#f0fdf4' : index % 2 === 0 ? '#ffffff' : '#f8fafc',
+                          borderBottom: index === topicsList.length - 1 ? 'none' : '1px solid #f1f5f9',
+                          transition: 'background 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0, paddingRight: '1rem' }}>
+                          <span style={{
+                            fontSize: '0.92rem', fontWeight: isChecked ? 700 : 600,
+                            color: isChecked ? '#166534' : '#1e293b',
+                            textDecoration: isChecked ? 'line-through' : 'none',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                          }}>
+                            {topic.name}
+                          </span>
+
+                          {topic.isFrequent && (
+                            <span style={{
+                              padding: '0.15rem 0.5rem', borderRadius: 6, fontSize: '0.68rem', fontWeight: 800,
+                              background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', flexShrink: 0
+                            }}>
+                              🔥 Sık Çıkan
+                            </span>
+                          )}
+
+                          {topic.note && (
+                            <span style={{ fontSize: '0.74rem', color: '#64748b', fontStyle: 'italic', flexShrink: 0 }}>
+                              💡 {topic.note}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Sade Checkbox */}
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0
+                        }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isChecked ? '#166534' : '#94a3b8' }}>
+                            {isChecked ? 'Tamamlandı' : 'Tamamla'}
+                          </span>
+                          <div style={{
+                            width: 22, height: 22, borderRadius: 6,
+                            background: isChecked ? '#10b981' : '#ffffff',
+                            border: isChecked ? 'none' : '2px solid #cbd5e1',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {isChecked && <CheckCircle2 size={16} color="white" />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>

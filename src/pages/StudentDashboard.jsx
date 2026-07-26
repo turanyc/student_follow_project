@@ -22,6 +22,7 @@ import StudyHeatmapCalendar from '../components/StudyHeatmapCalendar';
 import LiveLeaderboard from './LiveLeaderboard';
 
 const NAV_ITEMS = [
+  { path: '/student/smart-planner',icon: Brain,       label: 'Akıllı Planlayıcı ⚡', color: '#a855f7' },
   { path: '/student/study-map',    icon: Flame,        label: 'Anlık Çalışma Haritan', color: '#38bdf8' },
   { path: '/student/leaderboard',  icon: Trophy,       label: 'Canlı Liderlik & Yarışma', color: '#3b82f6' },
   { path: '/student/planner',      icon: Calendar,     label: 'Planlar & Görevler', color: '#6366f1' },
