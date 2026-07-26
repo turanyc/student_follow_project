@@ -740,7 +740,7 @@ const StudentDashboard = ({ children }) => {
         </div>
 
         <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => setIsProfileModalOpen(true)} title="Profilinizi ve Hedeflerinizi Düzenleyin">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => handleGuardedNavigation(() => navigate('/student/profile'))} title="Profilinizi ve Hedeflerinizi Düzenleyin">
             <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(30, 119, 150, 0.25)', overflow: 'hidden' }}>
               {userData.avatarEmoji || (userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓')}
             </div>

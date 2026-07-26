@@ -88,12 +88,13 @@ const AnimatedRoutes = () => {
         <Route path="/student/uni-search" element={<ProtectedRoute allowedRole="student"><StudentDashboard><UniSearchRobot /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/smart-planner" element={<ProtectedRoute allowedRole="student"><StudentDashboard><SmartPlanner /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/messages" element={<ProtectedRoute allowedRole="student"><StudentDashboard><StudentMessages /></StudentDashboard></ProtectedRoute>} />
+        <Route path="/student/profile" element={<ProtectedRoute allowedRole="student"><StudentDashboard><Profile /></StudentDashboard></ProtectedRoute>} />
 
         {/* Coach Routes */}
         <Route path="/coach" element={<ProtectedRoute allowedRole="coach"><CoachDashboard /></ProtectedRoute>} />
 
         {/* Shared */}
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><StudentDashboard><Profile /></StudentDashboard></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/video-call" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
       </Routes>
