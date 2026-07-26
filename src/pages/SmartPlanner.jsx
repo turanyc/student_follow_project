@@ -154,51 +154,88 @@ const SmartPlanner = () => {
     }
   };
 
-  // 🎯 ÖSYM / MEB Müfredatına Göre Otomatik Planlama Algoritması
+  // 🎯 ÖSYM / MEB / KPSS Sıralı ve Her Dersten Dengeli Akıllı Planlama Algoritması
   const handleAutoPlanFromCurriculum = () => {
-    const examGroup = (userData?.examType || 'yks').toUpperCase();
-    const curriculumExam = examGroup === 'LGS' ? CURRICULUM_DATA.LGS.LGS : (CURRICULUM_DATA.YKS.TYT || []);
+    const examType = (userData?.examType || 'YKS').toUpperCase();
+    
+    // Aggregate all curriculum items for the student's exam type
+    let curriculumPool = [];
+    if (examType === 'LGS') {
+      curriculumPool = CURRICULUM_DATA.LGS?.LGS || [];
+    } else if (examType === 'KPSS') {
+      curriculumPool = [
+        ...(CURRICULUM_DATA.KPSS?.['KPSS Lisans'] || []),
+        ...(CURRICULUM_DATA.KPSS?.['KPSS Önlisans'] || []),
+      ];
+    } else {
+      // Default YKS (TYT + AYT)
+      curriculumPool = [
+        ...(CURRICULUM_DATA.YKS?.TYT || []),
+        ...(CURRICULUM_DATA.YKS?.AYT || []),
+      ];
+    }
 
-    if (!curriculumExam || curriculumExam.length === 0) {
+    if (!curriculumPool || curriculumPool.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Müfredat Bulunamadı', text: 'Profilinizdeki sınav türü için müfredat verisi tanımlanamadı.' });
       return;
     }
 
-    const uncompletedTopics = [];
+    // 1. Group topics by Subject (e.g. Matematik, Türkçe, Fizik, Kimya, Biyoloji, Tarih, Coğrafya)
+    const subjectMap = {};
+    curriculumPool.forEach(item => {
+      const subj = item.subject || 'Genel';
+      if (!subjectMap[subj]) subjectMap[subj] = [];
+      subjectMap[subj].push(item);
+    });
+
+    const newDailyFromCurriculum = [];
     const completedTopics = [];
 
-    curriculumExam.forEach(item => {
-      const isChecked = !!checkedCurriculumTopics[item.id];
-      if (isChecked) {
-        completedTopics.push(item);
-      } else {
-        uncompletedTopics.push(item);
+    // 2. For EACH subject, pick strictly the VERY FIRST uncompleted topic in sequential order!
+    //    A topic at Index N+1 can NEVER be assigned before Index N is marked completed!
+    Object.keys(subjectMap).forEach((subj, sIdx) => {
+      const topicsList = subjectMap[subj];
+      
+      let firstUncompletedFound = false;
+      for (let i = 0; i < topicsList.length; i++) {
+        const item = topicsList[i];
+        const isChecked = !!checkedCurriculumTopics[item.id];
+        
+        if (isChecked) {
+          completedTopics.push(item);
+        } else if (!firstUncompletedFound) {
+          firstUncompletedFound = true;
+          newDailyFromCurriculum.push({
+            id: 'curr_seq_' + Date.now() + '_' + sIdx + '_' + i,
+            topic: `${item.subject}: ${item.topic} (${i + 1}. Sıradaki Konu)`,
+            targetCount: 60,
+            completedCount: 0,
+            day: sIdx % 2 === 0 ? 'Bugün' : 'Yarın',
+            status: 'pending'
+          });
+        }
       }
     });
 
-    // Create daily tasks for 3 uncompleted topics
-    const newDailyFromCurriculum = uncompletedTopics.slice(0, 3).map((item, idx) => ({
-      id: 'curr_uncomp_' + Date.now() + '_' + idx,
-      topic: `${item.subject}: ${item.topic} (Müfredat Hedefi)`,
-      targetCount: 50,
-      completedCount: 0,
-      day: idx === 0 ? 'Bugün' : 'Yarın',
-      status: 'pending'
-    }));
-
-    // Create SRS repeat tasks for completed topics
-    const newSrsFromCurriculum = completedTopics.slice(0, 3).map((item, idx) => ({
+    // 3. For COMPLETED topics, create targeted spaced repetition review tasks ("🔁 Tekrar Etmelisin")
+    const newSrsFromCurriculum = completedTopics.slice(0, 6).map((item, idx) => ({
       id: 'curr_comp_srs_' + Date.now() + '_' + idx,
       topic: `🔁 Tekrar Etmelisin: ${item.subject} - ${item.topic}`,
       learnedDate: new Date().toISOString().split('T')[0],
-      intervalDays: idx * 2 + 1,
-      dueDate: idx === 0 ? 'Bugün' : `${idx * 2 + 1} Gün Sonra`,
+      intervalDays: (idx % 3) * 2 + 1,
+      dueDate: idx < 2 ? 'Bugün' : `${idx + 1} Gün Sonra`,
       type: 'Tamamlanan Konu Düzenli Tekrarı',
       isDone: false
     }));
 
-    const updatedDaily = [...dailyTasks, ...newDailyFromCurriculum];
-    const updatedSrs = [...srsTasks, ...newSrsFromCurriculum];
+    // Filter duplicates
+    const existingTopics = new Set(dailyTasks.map(t => t.topic));
+    const filteredNewDaily = newDailyFromCurriculum.filter(t => !existingTopics.has(t.topic));
+    const updatedDaily = [...filteredNewDaily, ...dailyTasks];
+
+    const existingSrsTopics = new Set(srsTasks.map(t => t.topic));
+    const filteredNewSrs = newSrsFromCurriculum.filter(t => !existingSrsTopics.has(t.topic));
+    const updatedSrs = [...filteredNewSrs, ...srsTasks];
 
     setDailyTasks(updatedDaily);
     setSrsTasks(updatedSrs);
@@ -206,11 +243,12 @@ const SmartPlanner = () => {
 
     Swal.fire({
       icon: 'success',
-      title: '🎯 ÖSYM Müfredatınız Planlayıcıya Entegre Edildi!',
+      title: '🎯 Sıralı & Dengeli Müfredat Görevleri Atandı!',
       html: `
-        <div style="text-align:left; font-size:0.9rem; color:#334155; line-height:1.6;">
-          <p><b>Tamamlanmayan Konular:</b> ${newDailyFromCurriculum.length} adet eksik konu bugünkü/yarınki görevlerinize eklendi.</p>
-          <p><b>Tamamlanan Konular:</b> ${newSrsFromCurriculum.length} adet bitirilen konu hafızayı diri tutmak için <b>"🔁 Tekrar Etmelisin"</b> etiketiyle tekrarlara eklendi.</p>
+        <div style="text-align:left; font-size:0.88rem; color:#334155; line-height:1.6;">
+          <p><b>Ders Başına Sıralı Atama:</b> Sınavınızdaki her dersin (${Object.keys(subjectMap).slice(0, 5).join(', ')}) <u>en baştaki ilk bitirilmemiş konusu</u> sırayla görevlerinize atandı.</p>
+          <p><b>Rastgele Değil Sıralı Mantık:</b> Önceki konular bitmeden bir sonraki konu asla atanmaz.</p>
+          <p><b>Tamamlanan Konu Tekrarları:</b> Bitirdiğiniz ${filteredNewSrs.length} adet konu <b>"🔁 Tekrar Etmelisin"</b> etiketiyle tekrar takviminize eklendi.</p>
         </div>
       `,
       confirmButtonColor: '#6366f1'
@@ -498,6 +536,34 @@ const SmartPlanner = () => {
         >
           <BarChart2 size={18} /> Tarihsel Günlük Raporlarım 📊
         </button>
+      </div>
+
+      {/* ── DÜRÜSTLÜK VE ÖZ-DİSİPLİN UYARI BİLGİLENDİRME BANNERI ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #fffbe6 0%, #fef3c7 100%)',
+        border: '2px dashed #f59e0b',
+        borderRadius: 20,
+        padding: '1.2rem 1.5rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1.1rem',
+        boxShadow: '0 4px 16px rgba(245, 158, 11, 0.12)'
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 14, background: '#f59e0b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'white', flexShrink: 0, boxShadow: '0 4px 14px rgba(245,158,11,0.35)'
+        }}>
+          <AlertCircle size={28} />
+        </div>
+        <div>
+          <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.96rem', fontWeight: 900, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            💡 Dürüst Veri ve Öz-Disiplin Bilgilendirmesi
+          </h4>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5, fontWeight: 600 }}>
+            Sisteme veri girerken çalışmadığınız bir dersi/konuyu çalışmış gibi ya da çözmediğiniz soru sayısını çözmüş gibi eklemek <u>yalnızca kendi gelişim sürecinize ve sınav başarınıza zarar verir</u>. Yapay zeka ve koçunuzun size doğru rehberlik edebilmesi dürüst verilerinize bağlıdır. Unutmayın, en büyük zafer kendinize dürüst olmaktır!
+          </p>
+        </div>
       </div>
 
       {/* ── 1. GÜNLÜK GÖREVLER & AI DAĞITIM TABI ── */}

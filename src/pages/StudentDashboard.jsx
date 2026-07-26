@@ -874,8 +874,8 @@ const StudentDashboard = ({ children }) => {
                 <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1e7796', letterSpacing: '0.04em' }}>MENUTU KOÇLUK PRO ÖĞRENCİ PORTALI</span>
               </div>
               <h1 style={{ 
-                margin: 0, fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0f172a',
-                display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', lineHeight: 1.15
+                margin: 0, fontSize: '1.9rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0f172a',
+                display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', lineHeight: 1.2
               }}>
                 <span style={{ color: '#1e7796', fontWeight: 900 }}>
                   Hoş Geldin,
@@ -885,6 +885,9 @@ const StudentDashboard = ({ children }) => {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   fontWeight: 900,
+                  display: 'inline-block',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'normal',
                   filter: 'drop-shadow(0 2px 6px rgba(30, 119, 150, 0.18))'
                 }}>
                   {userData.name || 'Mustafa Turan Yılancıoğlu'}!
@@ -901,25 +904,25 @@ const StudentDashboard = ({ children }) => {
               </p>
             </div>
           </div>
-          
-          {/* Bugün Çalışılan Süre */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '0.8rem 1.4rem',
-            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)', minWidth: '150px'
-          }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>
-              Bugün Çalışılan
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
-              <Timer size={22} color="#10b981" />
-              <span style={{ fontSize: '1.45rem', fontWeight: 900 }}>
-                {Math.floor((todayTotalMinutes || 0) / 60)}s {Math.floor((todayTotalMinutes || 0) % 60)}dk
-              </span>
-            </div>
-          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+            {/* Bugün Çalışılan Süre - Sağ Tarafta Yan Yana */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '0.65rem 1.2rem',
+              boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)', minWidth: '140px'
+            }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>
+                Bugün Çalışılan
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f172a' }}>
+                <Timer size={20} color="#10b981" />
+                <span style={{ fontSize: '1.35rem', fontWeight: 900 }}>
+                  {Math.floor((todayTotalMinutes || 0) / 60)}s {Math.floor((todayTotalMinutes || 0) % 60)}dk
+                </span>
+              </div>
+            </div>
+
             <TreeWidget studyHours={todayTotalMinutes / 60} totalHours={Math.max(Number(userData.treePoints || 0), Number(userData.totalStudyHours || 0), Number(totalSessionHours || 0))} />
             <button
               onClick={() => {
