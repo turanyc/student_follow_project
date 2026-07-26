@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Plus, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Star, Flame, Target, BookOpen, PenTool, CheckSquare } from 'lucide-react';
+import { CheckCircle, Plus, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Star, Flame, Target, BookOpen, PenTool, CheckSquare, Search, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
@@ -81,6 +81,10 @@ const TrialExams = () => {
   const [selectedYksCategory, setSelectedYksCategory] = useState('TYT'); // 'TYT' or 'AYT'
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'TYT' | 'AYT'
   const [frequentFilter, setFrequentFilter] = useState('TYT'); // 'TYT' | 'AYT'
+  const [topicSearchQuery, setTopicSearchQuery] = useState('');
+  const [historyTopicSearchQuery, setHistoryTopicSearchQuery] = useState('');
+
+  const trLower = (str) => (str || '').replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
 
   // Form states for adding exam
   const [formData, setFormData] = useState({
@@ -597,8 +601,13 @@ const TrialExams = () => {
 
                   if (!topics || topics.length === 0) return <p style={{ color: '#94a3b8' }}>Konular yüklenemedi.</p>;
 
+                  const q = trLower(topicSearchQuery.trim());
+                  const filteredTopics = q
+                    ? topics.filter(t => trLower(t.name).includes(q) || trLower(t.subject).includes(q))
+                    : topics;
+
                   const subjectsMap = {};
-                  topics.forEach(t => {
+                  filteredTopics.forEach(t => {
                     const s = t.subject || 'Diğer';
                     if (!subjectsMap[s]) subjectsMap[s] = [];
                     subjectsMap[s].push(t);
@@ -606,7 +615,38 @@ const TrialExams = () => {
 
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      {Object.entries(subjectsMap).map(([subj, subjTopics]) => {
+                      <div style={{ position: 'relative' }}>
+                        <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type="text"
+                          placeholder="Çalışılacak konu veya ders adı ara..."
+                          value={topicSearchQuery}
+                          onChange={e => setTopicSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%', padding: topicSearchQuery ? '0.65rem 2.4rem 0.65rem 2.6rem' : '0.65rem 1rem 0.65rem 2.6rem',
+                            borderRadius: 12, border: '1px solid #cbd5e1', fontSize: '0.88rem',
+                            fontWeight: 600, outline: 'none', background: '#f8fafc'
+                          }}
+                        />
+                        {topicSearchQuery && (
+                          <button
+                            onClick={() => setTopicSearchQuery('')}
+                            style={{
+                              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                              background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8'
+                            }}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      {Object.keys(subjectsMap).length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                          <p style={{ margin: 0, fontWeight: 600 }}>"{topicSearchQuery}" ile eşleşen konu bulunamadı.</p>
+                        </div>
+                      ) : (
+                        Object.entries(subjectsMap).map(([subj, subjTopics]) => {
                         const selectedInSubj = subjTopics.filter(t => selectedList.includes(t.name)).length;
                         return (
                           <div key={subj} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '1.1rem' }}>
@@ -647,7 +687,8 @@ const TrialExams = () => {
                             </div>
                           </div>
                         );
-                      })}
+                      })
+                    )}
                     </div>
                   );
                 })()}
@@ -846,7 +887,6 @@ const TrialExams = () => {
                                 const allTopics = getTopicsForExam(grp, subTab);
                                 const currentList = exam.revisedTopics || [];
                                 
-                                // Hem müfredattaki konuları hem de varsa önceden eklenmiş farklı konuları birleştirelim
                                 const combinedTopics = [...allTopics];
                                 currentList.forEach(tName => {
                                   if (!combinedTopics.some(x => x.name === tName)) {
@@ -854,8 +894,13 @@ const TrialExams = () => {
                                   }
                                 });
 
+                                const hq = historyTopicSearchQuery.trim().toLowerCase();
+                                const filteredCombinedTopics = hq
+                                  ? combinedTopics.filter(t => t.name.toLowerCase().includes(hq) || (t.subject || findSubjectOfTopic(t.name) || '').toLowerCase().includes(hq))
+                                  : combinedTopics;
+
                                 const subjectsMap = {};
-                                combinedTopics.forEach(t => {
+                                filteredCombinedTopics.forEach(t => {
                                   const s = t.subject || findSubjectOfTopic(t.name) || 'Diğer';
                                   if (!subjectsMap[s]) subjectsMap[s] = [];
                                   subjectsMap[s].push(t);
@@ -863,9 +908,40 @@ const TrialExams = () => {
 
                                 return (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {Object.entries(subjectsMap).map(([subj, subjTopics]) => {
-                                      const selectedInSubj = subjTopics.filter(t => currentList.includes(t.name));
-                                      return (
+                                    <div style={{ position: 'relative' }}>
+                                      <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                                      <input
+                                        type="text"
+                                        placeholder="Konu veya ders adı ara..."
+                                        value={historyTopicSearchQuery}
+                                        onChange={e => setHistoryTopicSearchQuery(e.target.value)}
+                                        style={{
+                                          width: '100%', padding: historyTopicSearchQuery ? '0.5rem 2rem 0.5rem 2.2rem' : '0.5rem 0.8rem 0.5rem 2.2rem',
+                                          borderRadius: 10, border: '1px solid #cbd5e1', fontSize: '0.82rem',
+                                          fontWeight: 600, outline: 'none', background: '#ffffff'
+                                        }}
+                                      />
+                                      {historyTopicSearchQuery && (
+                                        <button
+                                          onClick={() => setHistoryTopicSearchQuery('')}
+                                          style={{
+                                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8'
+                                          }}
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {Object.keys(subjectsMap).length === 0 ? (
+                                      <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>
+                                        <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>"{historyTopicSearchQuery}" ile eşleşen konu bulunamadı.</p>
+                                      </div>
+                                    ) : (
+                                      Object.entries(subjectsMap).map(([subj, subjTopics]) => {
+                                        const selectedInSubj = subjTopics.filter(t => currentList.includes(t.name));
+                                        return (
                                         <div key={subj} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1rem' }}>
                                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
                                             <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e293b' }}>📚 {subj}</span>
@@ -896,11 +972,12 @@ const TrialExams = () => {
                                             })}
                                           </div>
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })()}
+                                       );
+                                     })
+                                   )}
+                                   </div>
+                                 );
+                               })()}
                             </div>
                           </motion.div>
                         )}

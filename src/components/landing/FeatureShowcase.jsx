@@ -14,8 +14,8 @@ const features = [
     subtitle: 'Sana En Uygun Tekniği Seç & Odaklanmaya Başla',
     desc: 'Pomodoro (25+5), Flowtime (45+8), Animedoro (50+20), 52/17 Kuralı ve Aralıklı Tekrar olmak üzere 5 farklı bilimsel odaklanma tekniği. Lofi müzikler ve canlı sayaç ile kesintisiz konsantrasyon odası sayesinde dikkat dağınıklığına son.',
     icon: Clock,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: '5 YÖNTEM & ODA',
     details: [
       'Pomodoro (25+5), Flowtime (45+8), Animedoro (50+20) tam desteği',
@@ -29,8 +29,8 @@ const features = [
     subtitle: 'Canlı Isı Matrisi & İstikrar Serisi (Streak) Takibi',
     desc: 'Her gün tamamladığın pomodorolar, seanslar ve test saatleri bu canlı ısı matrisinde anlık olarak ışıldar. İstikrar serini (Streak) koruyarak her geçen gün daha da güçlen ve platformda efsanevi başarılara imza at.',
     icon: Flame,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'CANLI HARİTA',
     details: [
       'GitHub tarzı 365 günlük canlı çalışma yoğunluğu ısı haritası',
@@ -44,8 +44,8 @@ const features = [
     subtitle: '2026 YKS/LGS Resmî Sonuç Belgesi Formatında Analiz',
     desc: 'TYT, AYT, YDT ve LGS için gerçek katsayılarla net ve puan simülasyonu. Resmî ÖSYM sonuç belgesi arayüzü ile hedeflediğiniz üniversite için kaç net gerektiğini anında görün ve çalışma stratejinizi belirleyin.',
     icon: Target,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'EN POPÜLER',
     details: [
       'Resmî ÖSYM sonuç belgesi formatında gerçeğe birebir uygun arayüz',
@@ -59,8 +59,8 @@ const features = [
     subtitle: '1-2-3. Olan Şampiyonların Efsanevi Görünümü',
     desc: 'Haftalık ve günlük en çok odaklanan öğrencilerin yarıştığı canlı arena. İlk 3 sıraya giren şampiyon öğrenciler özel rozetler, çerçeveler ve unvanlarla ödüllendirilir. Rekabetle motivasyonunu sürekli en üst seviyede tut.',
     icon: Trophy,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'CANLI ARENA',
     details: [
       '1. (Zirve Kralı), 2. (Usta Odaklanıcı) ve 3. (Azim Savaşçısı) için özel görünümler',
@@ -74,8 +74,8 @@ const features = [
     subtitle: 'Çalıştıkça Büyüyen 10 Seviyeli Dijital Eşlikçi',
     desc: 'Her 50 dakikalık odaklanma seansında ağacınızı besleyin. Tohumdan 500+ saatlik Zirve Ağacı seviyesine kadar büyüyün, özel rozetler ve XP kazanarak öğrenme serüveninizi keyifli bir oyuna dönüştürün.',
     icon: Leaf,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'BENZERSİZ',
     details: [
       '10 aşamalı görsel ağaç büyüme animasyonu ve gelişmiş seviyeler',
@@ -89,8 +89,8 @@ const features = [
     subtitle: 'İstatistik Analiz & Net Gelişim Grafikleri',
     desc: 'Girdiğiniz deneme ve etüt verilerini anlık olarak işleyerek net artış grafiğinizi, ders bazlı başarı oranlarınızı ve hangi konuları unutmaya başladığınızı görsel grafiklerle detaylıca sunan akıllı raporlama sistemi.',
     icon: BarChart2,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'AKILLI ANALİZ',
     details: [
       'Denemeler arası net artışı ve uzun vadeli gelişim trendi grafikleri',
@@ -104,8 +104,8 @@ const features = [
     subtitle: 'İnteraktif Zaman Çizelgesi & Görev Takibi',
     desc: 'Koçunuzun veya kendinizin hazırladığı haftalık ders programını, etüt saatlerini ve deneme tarihlerini saat saat yönetin, tamamlanan görevleri işaretleyin. Sorumluluklarınızı tek ekrandan kolayca takip edin.',
     icon: Calendar,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'PLANLAMA',
     details: [
       'Saatlik zaman çizelgesi ve öncelik dereceli görev kartları',
@@ -119,8 +119,8 @@ const features = [
     subtitle: 'Kesintisiz Online Görüşme & Rehberlik',
     desc: 'Platform üzerinden ayrılmadan, uzman koçunuzla birebir HD canlı görüntü ve sesli görüşme yapın. Haftalık durum değerlendirmesini tek tıkla başlatarak koçunuzun rehberliğinden anında yararlanın.',
     icon: Video,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'CANLI SEANS',
     details: [
       'Harici uygulama gerektirmeyen entegre, yüksek kaliteli görüşme odası',
@@ -134,8 +134,8 @@ const features = [
     subtitle: 'Psikolojik Destek & Stres Yönetimi',
     desc: 'Sınav maratonu sadece bilgi değil, motivasyon ve psikoloji işidir. Günlük duygu durumunuzu (mutlu, kaygılı, yorgun) bildirin, sistem size özel moral desteği sunsun ve koçunuz rehberliğini bu duruma göre uyarlasın.',
     icon: Smile,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'MOTİVASYON',
     details: [
       'Günlük duygu durumu kaydı ve geçmiş istatistik takibi (Mood Tracker)',
@@ -149,8 +149,8 @@ const features = [
     subtitle: 'Net Artışlarını Adım Adım İzleyin',
     desc: 'TYT, AYT, LGS ve branş deneme sonuçlarınızı sisteme kaydedin, zaman içindeki net yükselişinizi, branş bazlı ortalamalarınızı ve eksiklerinizi şık, anlaşılır grafiklerle inceleyerek hedefe emin adımlarla ilerleyin.',
     icon: FileText,
-    color: '#1e7796',
-    bg: 'rgba(30, 119, 150, 0.12)',
+    color: '#bf8253',
+    bg: 'rgba(191, 130, 83, 0.12)',
     badge: 'GELİŞİM',
     details: [
       'Ders ders ve konu konu kapsamlı doğru, yanlış ve net kaydı',
@@ -262,6 +262,19 @@ const FeatureShowcase = ({ onOpenAuth }) => {
     const handleResize = () => setIsMobile(window.innerWidth <= 860);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleSelectFeature = (e) => {
+      if (e.detail && typeof e.detail === 'string') {
+        const found = features.find(f => f.id === e.detail);
+        if (found) {
+          setActiveFeature(found);
+        }
+      }
+    };
+    window.addEventListener('selectFeature', handleSelectFeature);
+    return () => window.removeEventListener('selectFeature', handleSelectFeature);
   }, []);
 
   // Analytics tab state
@@ -1210,7 +1223,7 @@ const FeatureShowcase = ({ onOpenAuth }) => {
           color: '#0f172a', wordBreak: 'break-word'
         }}>
           Sıradan Takipleri Unutun: <br />
-          <span style={{ color: '#1e7796' }}>
+          <span style={{ color: '#bf8253' }}>
             10 Devasa Koçluk ve Oyunlaştırma Özelliği
           </span>
         </h2>
@@ -1220,7 +1233,7 @@ const FeatureShowcase = ({ onOpenAuth }) => {
       </div>
 
       {/* Interactive Layout: Left Feature Tabs Grid, Right Spotlight Display */}
-      <div style={{
+      <div id="studymap-section" style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '2.5rem', alignItems: 'start', maxWidth: 1380, margin: '0 auto', width: '100%'
       }}>

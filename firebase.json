@@ -3,6 +3,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "follow-project-d8710",
     "public": "dist",
     "ignore": [
       "firebase.json",

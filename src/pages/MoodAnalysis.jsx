@@ -9,12 +9,12 @@ import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 const MOOD_CONFIG = {
-  great: { label: 'Harika', emoji: '🤩', color: '#10b981' },
-  good: { label: 'İyi', emoji: '🙂', color: '#6366f1' },
-  tired: { label: 'Yorgun', emoji: '🥱', color: '#f59e0b' },
-  stressed: { label: 'Stresli', emoji: '😫', color: '#ef4444' },
-  sad: { label: 'Üzgün', emoji: '😢', color: '#8b5cf6' },
-  excited: { label: 'Heyecanlı', emoji: '🚀', color: '#06b6d4' },
+  great: { label: 'Harika', emoji: '/emoji/harika.png', color: '#10b981' },
+  good: { label: 'İyi', emoji: '/emoji/iyi.png', color: '#6366f1' },
+  tired: { label: 'Yorgun', emoji: '/emoji/yorgun.png', color: '#f59e0b' },
+  stressed: { label: 'Stresli', emoji: '/emoji/stresli.png', color: '#ef4444' },
+  sad: { label: 'Üzgün', emoji: '/emoji/uzgun.png', color: '#8b5cf6' },
+  excited: { label: 'Heyecanlı', emoji: '/emoji/heyecanli.png', color: '#06b6d4' },
 };
 
 const MoodAnalysis = () => {
@@ -89,7 +89,7 @@ const MoodAnalysis = () => {
         <div style={{ background: 'var(--bg-color-alt)', border: '1px solid var(--border-color)', padding: '0.75rem 1rem', borderRadius: 8 }}>
           <p style={{ margin: 0, fontWeight: 700 }}>{label}</p>
           {entry?.emoji && entry.emoji !== '-' && (
-            <p style={{ margin: 0, fontSize: '1.2rem' }}>{entry.emoji}</p>
+            <img src={entry.emoji} alt="mood" style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain', display: 'block', marginBottom: '0.2rem' }} />
           )}
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             Puan: {payload[0]?.value} / 5
@@ -137,7 +137,13 @@ const MoodAnalysis = () => {
             borderColor: lastMood ? `${MOOD_CONFIG[lastMood]?.color}40` : undefined,
             textAlign: 'center', padding: '2.5rem'
           }}>
-            <p style={{ fontSize: '4rem', margin: 0 }}>{lastMood ? MOOD_CONFIG[lastMood]?.emoji : '😐'}</p>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              {lastMood ? (
+                <img src={MOOD_CONFIG[lastMood]?.emoji} alt="mood" style={{ width: '5rem', height: '5rem', objectFit: 'contain' }} />
+              ) : (
+                <p style={{ fontSize: '4rem', margin: 0 }}>❓</p>
+              )}
+            </div>
             <h3 style={{ margin: '0.5rem 0 0', color: lastMood ? MOOD_CONFIG[lastMood]?.color : 'var(--text-main)' }}>
               {lastMood ? MOOD_CONFIG[lastMood]?.label : 'Bilinmiyor'}
             </h3>
@@ -147,7 +153,7 @@ const MoodAnalysis = () => {
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
               {Object.entries(MOOD_CONFIG).map(([id, m]) => (
                 <div key={id} style={{ textAlign: 'center', opacity: lastMood === id ? 1 : 0.35, flex: '1 1 45px' }}>
-                  <p style={{ fontSize: '1.5rem', margin: 0 }}>{m.emoji}</p>
+                  <img src={m.emoji} alt={m.label} style={{ width: '2rem', height: '2rem', objectFit: 'contain', margin: '0 auto' }} />
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: 0 }}>{m.label}</p>
                 </div>
               ))}
@@ -221,7 +227,7 @@ const MoodAnalysis = () => {
                     borderRadius: 8
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '1.25rem' }}>{mc?.emoji}</span>
+                      <img src={mc?.emoji} alt={mc?.label} style={{ width: '1.5rem', height: '1.5rem', objectFit: 'contain' }} />
                       <span style={{ color: mc?.color, fontWeight: 600, fontSize: '0.875rem' }}>{mc?.label}</span>
                     </div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{entry.date}</span>

@@ -149,7 +149,7 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
 
   // Styles for authentic official table look
   const tableStyle = {
-    width: '100%', borderCollapse: 'collapse', marginBottom: '1.5rem',
+    width: '100%', minWidth: '700px', borderCollapse: 'collapse', marginBottom: '1.5rem',
     background: 'white', border: '2px solid #1e293b', fontSize: '0.85rem'
   };
   const thStyle = {
@@ -160,7 +160,7 @@ const OsymTarget = ({ studentId: propStudentId, readOnly = false }) => {
     border: '1px solid #64748b', padding: '0.35rem', textAlign: 'center', color: '#1e293b'
   };
   const inputStyle = {
-    width: '100%', maxWidth: '56px', padding: '0.25rem', textAlign: 'center',
+    width: '100%', minWidth: '40px', maxWidth: '56px', padding: '0.25rem', textAlign: 'center',
     border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 700,
     fontSize: '0.85rem', background: '#f8fafc', color: '#0f172a'
   };

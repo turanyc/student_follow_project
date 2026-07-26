@@ -7,6 +7,10 @@ import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, Timer, Info, ArrowRigh
 const playBeep = (type = 'start') => {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS Safari requires resume() after user interaction
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
     const sequences = {
       start: [{ freq: 523, dur: 0.12 }, { freq: 659, dur: 0.15 }],
       workDone: [

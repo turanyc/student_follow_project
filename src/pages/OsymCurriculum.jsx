@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen, Flame, CheckCircle2, Circle, Search, Filter,
+  BookOpen, Flame, CheckCircle2, Circle, Search, Filter, X,
   Award, Sparkles, Target, Zap, ChevronDown, ChevronRight,
   TrendingUp, BarChart3, Star, CheckSquare, Layers
 } from 'lucide-react';
@@ -72,11 +72,18 @@ const OsymCurriculum = () => {
     return ['Tümü', ...Array.from(set)];
   }, [activeTopics]);
 
+  const trLower = (str) => (str || '').replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+
   // Filter topics
   const filteredTopics = useMemo(() => {
+    const q = trLower(searchQuery.trim());
     return activeTopics.filter(t => {
       if (selectedSubject !== 'Tümü' && t.subject !== selectedSubject) return false;
-      if (searchQuery.trim() && !t.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
+      if (q) {
+        const nameMatch = trLower(t.name).includes(q);
+        const subjMatch = trLower(t.subject).includes(q);
+        if (!nameMatch && !subjMatch) return false;
+      }
       return true;
     });
   }, [activeTopics, selectedSubject, searchQuery]);
@@ -316,15 +323,27 @@ const OsymCurriculum = () => {
             <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
-              placeholder="Konu adı ara..."
+              placeholder="Konu veya ders adı ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                width: '100%', padding: '0.6rem 1rem 0.6rem 2.4rem',
+                width: '100%', padding: searchQuery ? '0.6rem 2.2rem 0.6rem 2.4rem' : '0.6rem 1rem 0.6rem 2.4rem',
                 borderRadius: 12, border: '1px solid #cbd5e1', fontSize: '0.88rem',
                 fontWeight: 600, outline: 'none', background: '#f8fafc'
               }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
+                  padding: 2, display: 'flex', alignItems: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>

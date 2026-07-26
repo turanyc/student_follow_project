@@ -23,6 +23,8 @@ import CoachAdvice from './pages/CoachAdvice';
 import StudyMapPage from './pages/StudyMapPage';
 import StudyMethodGuide from './pages/StudyMethodGuide';
 import LiveLeaderboard from './pages/LiveLeaderboard';
+import MyReports from './pages/MyReports';
+import UniSearchRobot from './components/UniSearchRobot';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { currentUser, userRole, loading } = useAuth();
@@ -60,7 +62,7 @@ const AnimatedRoutes = () => {
 
   return (
     <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location} key={location.pathname.split('/')[1] || 'root'}>
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
 
@@ -79,6 +81,8 @@ const AnimatedRoutes = () => {
         <Route path="/student/coach-advice" element={<ProtectedRoute allowedRole="student"><StudentDashboard><CoachAdvice /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/study-methods" element={<ProtectedRoute allowedRole="student"><StudentDashboard><StudyMethodGuide /></StudentDashboard></ProtectedRoute>} />
         <Route path="/student/leaderboard" element={<ProtectedRoute allowedRole="student"><StudentDashboard><LiveLeaderboard /></StudentDashboard></ProtectedRoute>} />
+        <Route path="/student/reports" element={<ProtectedRoute allowedRole="student"><StudentDashboard><MyReports /></StudentDashboard></ProtectedRoute>} />
+        <Route path="/student/uni-search" element={<ProtectedRoute allowedRole="student"><StudentDashboard><UniSearchRobot /></StudentDashboard></ProtectedRoute>} />
 
         {/* Coach Routes */}
         <Route path="/coach" element={<ProtectedRoute allowedRole="coach"><CoachDashboard /></ProtectedRoute>} />

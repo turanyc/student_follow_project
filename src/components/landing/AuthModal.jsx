@@ -3,7 +3,7 @@ import {
   UserCircle, GraduationCap, Phone, Mail, Lock, User, ArrowRight, X, Sparkles, ShieldCheck 
 } from 'lucide-react';
 import { auth, db } from '../../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 
@@ -16,24 +16,61 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   useEffect(() => {
     setIsRegister(initialMode === 'register');
   }, [initialMode]);
 
+  // Lock body scroll when modal is open (iOS/Android fix)
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    if (isForgotPassword) {
+      if (!email.trim()) {
+        Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen e-posta adresinizi girin.', didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; } });
+        setLoading(false);
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        Swal.fire({ icon: 'success', title: 'Başarılı', text: 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.', didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; } });
+        setIsForgotPassword(false);
+      } catch (err) {
+        let msg = 'Şifre sıfırlama e-postası gönderilemedi.';
+        if (err.message.includes('auth/user-not-found')) msg = 'Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı.';
+        Swal.fire({ icon: 'error', title: 'Hata', text: msg, didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; } });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       if (isRegister) {
         if (!name.trim()) {
-          Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen ad ve soyadınızı giriniz.' });
+          Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen ad ve soyadınızı giriniz.', didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; } });
           setLoading(false);
           return;
         }
         if (!phone.trim()) {
-          Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen telefon numaranızı giriniz.' });
+          Swal.fire({ icon: 'warning', title: 'Eksik Bilgi', text: 'Lütfen telefon numaranızı giriniz.', didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; } });
           setLoading(false);
           return;
         }
@@ -73,7 +110,8 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           title: 'Hoş Geldiniz! 🚀',
           text: 'Hesabınız başarıyla oluşturuldu. Panele yönlendiriliyorsunuz...',
           timer: 1500,
-          showConfirmButton: false
+          showConfirmButton: false,
+          didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; }
         });
 
         if (onSuccess) onSuccess(role);
@@ -116,7 +154,8 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
         icon: 'error',
         title: 'Hata!',
         text: isRegister ? `Kayıt olurken bir hata oluştu: ${errorMsg}` : `Giriş başarısız: ${errorMsg}`,
-        confirmButtonColor: '#0284c7'
+        confirmButtonColor: '#0284c7',
+        didOpen: () => { const swal = document.querySelector('.swal2-container'); if(swal) swal.style.zIndex = '999999'; }
       });
     } finally {
       setLoading(false);
@@ -125,10 +164,14 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
+      position: 'fixed', inset: 0, zIndex: 1000,
       background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1.5rem', animation: 'fadeIn 0.25s ease-out'
+      padding: '1.5rem',
+      paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+      paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+      animation: 'fadeIn 0.25s ease-out'
     }}>
       <div style={{
         width: '100%', maxWidth: 480,
@@ -156,61 +199,67 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
         </button>
 
         {/* Top Tabs */}
-        <div style={{
-          display: 'flex', background: '#f1f5f9', padding: '0.35rem',
-          borderRadius: 16, marginBottom: '1.5rem', border: '1px solid #e2e8f0'
-        }}>
-          <button
-            type="button"
-            onClick={() => setIsRegister(false)}
-            style={{
-              flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
-              fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
-              background: !isRegister ? '#ffffff' : 'transparent',
-              color: !isRegister ? '#0284c7' : '#64748b',
-              boxShadow: !isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
-            }}
-          >
-            Giriş Yap
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsRegister(true)}
-            style={{
-              flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
-              fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
-              background: isRegister ? '#ffffff' : 'transparent',
-              color: isRegister ? '#0284c7' : '#64748b',
-              boxShadow: isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
-            }}
-          >
-            Ücretsiz Kayıt Ol
-          </button>
-        </div>
+        {!isForgotPassword && (
+          <div style={{
+            display: 'flex', background: '#f1f5f9', padding: '0.35rem',
+            borderRadius: 16, marginBottom: '1.5rem', border: '1px solid #e2e8f0'
+          }}>
+            <button
+              type="button"
+              onClick={() => setIsRegister(false)}
+              style={{
+                flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
+                fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
+                background: !isRegister ? '#ffffff' : 'transparent',
+                color: !isRegister ? '#0284c7' : '#64748b',
+                boxShadow: !isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
+              }}
+            >
+              Giriş Yap
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRegister(true)}
+              style={{
+                flex: 1, padding: '0.75rem', borderRadius: 12, border: 'none', cursor: 'pointer',
+                fontWeight: 800, fontSize: '0.92rem', transition: 'all 0.25s',
+                background: isRegister ? '#ffffff' : 'transparent',
+                color: isRegister ? '#0284c7' : '#64748b',
+                boxShadow: isRegister ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none'
+              }}
+            >
+              Ücretsiz Kayıt Ol
+            </button>
+          </div>
+        )}
 
         <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem 1.2rem', background: '#ffffff', borderRadius: 20, border: '1px solid #f1f5f9', boxShadow: '0 4px 15px rgba(15, 23, 42, 0.05)' }}>
-            <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 86, width: 'auto', maxWidth: '300px', objectFit: 'contain' }} />
+            <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 86, width: 'auto', maxWidth: '300px', objectFit: 'contain', flexShrink: 0 }} />
           </div>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.35rem 0.85rem', borderRadius: 99, background: '#e0f2fe',
-            color: '#0369a1', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #bae6fd'
-          }}>
-            <Sparkles size={13} color="#0284c7" /> {isRegister ? '14 GÜN ÜCRETSİZ PRO DENEME' : 'MENUTU KOÇLUK ALTYAPISI'}
-          </div>
+          {!isForgotPassword && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+              padding: '0.35rem 0.85rem', borderRadius: 99, background: '#e0f2fe',
+              color: '#0369a1', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #bae6fd'
+            }}>
+              <Sparkles size={13} color="#0284c7" /> {isRegister ? '14 GÜN ÜCRETSİZ PRO DENEME' : 'MENUTU KOÇLUK ALTYAPISI'}
+            </div>
+          )}
           <h3 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 900, color: '#0f172a' }}>
-            {isRegister ? 'Aramıza Hoş Geldiniz! 🚀' : 'Tekrar Hoş Geldiniz! 👋'}
+            {isForgotPassword ? 'Şifremi Unuttum' : (isRegister ? 'Aramıza Hoş Geldiniz! 🚀' : 'Tekrar Hoş Geldiniz! 👋')}
           </h3>
           <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b', maxWidth: '90%', lineHeight: 1.5 }}>
-            {isRegister ? 'Hemen profilinizi oluşturun ve koçluk altyapımızla çalışmaya başlayın.' : 'Hesabınıza giriş yaparak koçluk ve takip panelinize ulaşın.'}
+            {isForgotPassword 
+              ? 'E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.' 
+              : (isRegister ? 'Hemen profilinizi oluşturun ve koçluk altyapımızla çalışmaya başlayın.' : 'Hesabınıza giriş yaparak koçluk ve takip panelinize ulaşın.')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           
           {/* If Register: Role Selection */}
-          {isRegister && (
+          {!isForgotPassword && isRegister && (
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
                 HESAP TÜRÜ SEÇİN
@@ -249,7 +298,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           )}
 
           {/* If Register and Student: Exam Type (YKS vs LGS) */}
-          {isRegister && role === 'student' && (
+          {!isForgotPassword && isRegister && role === 'student' && (
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', letterSpacing: '0.04em' }}>
                 HAZIRLANDIĞINIZ SINAV
@@ -281,12 +330,38 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                 >
                   <span>📘 LGS (MEB)</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setExamType('kpss')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    padding: '0.7rem', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                    border: `1.5px solid ${examType === 'kpss' ? '#0284c7' : '#cbd5e1'}`,
+                    background: examType === 'kpss' ? '#f0f9ff' : '#f8fafc',
+                    color: examType === 'kpss' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.85rem'
+                  }}
+                >
+                  <span>🏛️ KPSS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExamType('kendini-gelistirme')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    padding: '0.7rem', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                    border: `1.5px solid ${examType === 'kendini-gelistirme' ? '#0284c7' : '#cbd5e1'}`,
+                    background: examType === 'kendini-gelistirme' ? '#f0f9ff' : '#f8fafc',
+                    color: examType === 'kendini-gelistirme' ? '#0369a1' : '#64748b', fontWeight: 800, fontSize: '0.85rem'
+                  }}
+                >
+                  <span>🚀 Kendini Geliştirme</span>
+                </button>
               </div>
             </div>
           )}
 
           {/* If Register: Name & Phone fields */}
-          {isRegister && (
+          {!isForgotPassword && isRegister && (
             <>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
@@ -361,10 +436,22 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           </div>
 
           {/* Password field */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem' }}>
-              ŞİFRE
-            </label>
+          {!isForgotPassword && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155' }}>
+                  ŞİFRE
+                </label>
+                {!isRegister && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsForgotPassword(true)}
+                    style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Şifremi Unuttum
+                  </button>
+                )}
+              </div>
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#64748b" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
               <input
@@ -383,6 +470,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
               />
             </div>
           </div>
+          )}
 
           {/* Submit Button */}
           <button
@@ -407,7 +495,7 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
                 </>
               ) : (
                 <>
-                  <span>{isRegister ? 'Ücretsiz Kayıt Ol & Başla' : 'Giriş Yap & Panele Git'}</span>
+                  <span>{isForgotPassword ? 'Şifre Sıfırlama Bağlantısı Gönder' : (isRegister ? 'Ücretsiz Kayıt Ol & Başla' : 'Giriş Yap & Panele Git')}</span>
                   <ArrowRight size={18} />
                 </>
               )}
@@ -415,12 +503,21 @@ const AuthModal = ({ initialMode = 'login', onClose, onSuccess }) => {
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '0.6rem' }}>
-            <span 
-              onClick={() => setIsRegister(!isRegister)}
-              style={{ fontSize: '0.88rem', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}
-            >
-              {isRegister ? 'Zaten hesabınız var mı? Giriş Yapın' : 'Henüz hesabınız yok mu? Hemen Ücretsiz Kayıt Olun'}
-            </span>
+            {isForgotPassword ? (
+              <span 
+                onClick={() => setIsForgotPassword(false)}
+                style={{ fontSize: '0.88rem', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}
+              >
+                Giriş ekranına geri dön
+              </span>
+            ) : (
+              <span 
+                onClick={() => setIsRegister(!isRegister)}
+                style={{ fontSize: '0.88rem', color: '#0284c7', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}
+              >
+                {isRegister ? 'Zaten hesabınız var mı? Giriş Yapın' : 'Henüz hesabınız yok mu? Hemen Ücretsiz Kayıt Olun'}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.78rem', color: '#64748b' }}>

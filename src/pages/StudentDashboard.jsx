@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Target, Video, MessageSquare, User, LogOut, Leaf,
-  PenTool, BarChart2, Calendar, Compass, Heart, Clock, Phone, Home, Timer, Award, PlusCircle, Flame, Sparkles, Trophy, Menu, X, CheckCircle, XCircle, Zap, Brain, Rocket, Pause, Bell
+  PenTool, BarChart2, Calendar, Compass, Heart, Clock, Phone, Home, Timer, Award, PlusCircle, Flame, Sparkles, Trophy, Menu, X, CheckCircle, XCircle, Zap, Brain, Rocket, Pause, Bell, Trash2, GraduationCap
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +9,7 @@ import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import {
   doc, setDoc, updateDoc, onSnapshot, collection, query,
-  where, orderBy, addDoc, serverTimestamp, increment, limit
+  where, orderBy, addDoc, serverTimestamp, increment, limit, deleteDoc
 } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,14 +22,15 @@ import StudyHeatmapCalendar from '../components/StudyHeatmapCalendar';
 import LiveLeaderboard from './LiveLeaderboard';
 
 const NAV_ITEMS = [
-  { path: '/student',              icon: Home,         label: 'Anasayfa',          color: '#38bdf8' },
   { path: '/student/study-map',    icon: Flame,        label: 'Anlık Çalışma Haritan', color: '#38bdf8' },
   { path: '/student/leaderboard',  icon: Trophy,       label: 'Canlı Liderlik & Yarışma', color: '#3b82f6' },
   { path: '/student/planner',      icon: Calendar,     label: 'Planlar & Görevler', color: '#6366f1' },
   { path: '/student/goals',        icon: Target,       label: 'Hedeflerim',         color: '#3b82f6' },
   { path: '/student/osym-target',  icon: Award,        label: 'ÖSYM Hedef Tablom',  color: '#6366f1' },
+  { path: '/student/uni-search',   icon: GraduationCap,label: 'Üniversite Robotu', color: '#818cf8' },
   { path: '/student/gamification', icon: Leaf,         label: 'Öğrenme Ağacım',    color: '#10b981' },
   { path: '/student/trial-exams',  icon: PenTool,      label: 'Deneme Netleri',     color: '#38bdf8' },
+  { path: '/student/reports',      icon: BarChart2,    label: 'Raporlarım',         color: '#f97316' },
   { path: '/student/osym-curriculum', icon: BookOpen,  label: 'ÖSYM Müfredatı',     color: '#3b82f6' },
   { path: '/student/analytics',    icon: BarChart2,    label: 'İstatistik & Analiz', color: '#6366f1' },
   { path: '/student/mood',         icon: Heart,        label: 'Duygu Analizi',      color: '#f43f5e' },
@@ -111,13 +112,34 @@ const StudentDashboard = ({ children }) => {
   const [apptTime, setApptTime] = useState('');
   const [apptNote, setApptNote] = useState('');
   const [requestingAppt, setRequestingAppt] = useState(false);
-  const [dashTab, setDashTab] = useState('home');
+
+  const [notifications, setNotifications] = useState([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [dashTab, setDashTab] = useState(location.state?.dashTab || 'home');
   const [isPomodoroActive, setIsPomodoroActive] = useState(false);
   const [activeStudyMethod, setActiveStudyMethod] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showAdvice, setShowAdvice] = useState(false);
   const pomodoroRef = useRef();
+
+  // Lock body scroll when mobile drawer is open (iOS/Android fix)
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -141,6 +163,26 @@ const StudentDashboard = ({ children }) => {
 
   useEffect(() => {
     if (!currentUser) return;
+    const unsub = onSnapshot(query(collection(db, 'users', currentUser.uid, 'notifications'), orderBy('createdAt', 'desc')), (snap) => {
+      const now = Date.now();
+      const oneWeek = 7 * 24 * 60 * 60 * 1000;
+      const notifs = [];
+      snap.forEach(d => {
+        const data = d.data();
+        const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || now);
+        if (now - createdAt > oneWeek) {
+          try { deleteDoc(doc(db, 'users', currentUser.uid, 'notifications', d.id)); } catch (e) {}
+        } else {
+          notifs.push({ id: d.id, ...data });
+        }
+      });
+      setNotifications(notifs);
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
     const today = new Date().toISOString().split('T')[0];
     return onSnapshot(
       query(collection(db, 'users', currentUser.uid, 'studySessions'), where('date', '==', today)),
@@ -156,36 +198,49 @@ const StudentDashboard = ({ children }) => {
     if (!currentUser) return;
     return onSnapshot(
       query(collection(db, 'appointmentRequests'), where('studentId', '==', currentUser.uid), orderBy('requestedAt', 'desc'), limit(20)),
-      (snap) => setMyAppointments(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      (snap) => setMyAppointments(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (error) => {
+        console.error("Firestore Randevu Hatası (Büyük ihtimalle Index eksik):", error);
+        setMyAppointments([]);
+      }
     );
   }, [currentUser]);
 
   useEffect(() => {
     if (location.pathname === '/student') {
-      setDashTab('home');
+      if (location.state && location.state.dashTab) {
+        setDashTab(location.state.dashTab);
+      } else {
+        setDashTab('pomodoro');
+      }
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.state]);
 
   const toggleStatus = async () => {
     if (!currentUser || !userData) return;
     try {
       const isStudying = userData.status === 'studying';
       if (isStudying) {
-        if (pomodoroRef.current?.reset) {
+        let wasPomodoroActive = false;
+        if (pomodoroRef.current?.reset && isPomodoroActive) {
           try { pomodoroRef.current.reset(); } catch (e) { console.error('pomodoro reset error:', e); }
           setIsPomodoroActive(false);
+          wasPomodoroActive = true;
         }
         const startMs = userData.studySessionStart ? getSafeTimeMs(userData.studySessionStart) : null;
         const endMs = Date.now();
         const durationMinutes = startMs ? Math.max(0, (endMs - startMs) / 60000) : 0;
         const today = new Date(endMs).toISOString().split('T')[0];
-        if (durationMinutes > 0.1) {
+        
+        // If pomodoro was active, its time was already recorded via reset(). 
+        // Also, if duration is over 12 hours (720 mins), assume user left it open and ignore it.
+        if (durationMinutes > 0.1 && !wasPomodoroActive && durationMinutes <= 720) {
           const validMins = isNaN(durationMinutes) ? 0 : parseFloat(durationMinutes.toFixed(2));
           await addDoc(collection(db, 'users', currentUser.uid, 'studySessions'), {
             date: today, durationMinutes: validMins,
             startedAt: userData.studySessionStart || new Date(endMs - validMins * 60000).toISOString(),
             endedAt: new Date(endMs).toISOString(),
-            completed: false, note: 'Tamamlanmadı (Erken Sonlandırıldı)'
+            completed: false, note: 'Manuel Çalışma'
           });
           await updateDoc(doc(db, 'users', currentUser.uid), {
             status: 'not-studying', studySessionStart: null,
@@ -233,7 +288,9 @@ const StudentDashboard = ({ children }) => {
         });
         await updateDoc(doc(db, 'users', currentUser.uid), {
           totalStudyHours: increment(methodMinutes / 60),
-          treePoints: increment(1)
+          treePoints: increment(1),
+          status: 'not-studying',
+          studySessionStart: null
         });
         Swal.fire({ icon: 'success', title: `${method?.emoji || '🍅'} 1 Seans Tamamlandı!`, text: `Harika iş! +${methodMinutes} dakika çalışma süresi!`, timer: 3000, showConfirmButton: false });
       } else {
@@ -251,7 +308,9 @@ const StudentDashboard = ({ children }) => {
           completed: false, note: 'Tamamlanmadı (Erken Sonlandırıldı)'
         });
         await updateDoc(doc(db, 'users', currentUser.uid), {
-          totalStudyHours: increment(methodMinutes / 60)
+          totalStudyHours: increment(methodMinutes / 60),
+          status: 'not-studying',
+          studySessionStart: null
         });
         Swal.fire({ icon: 'info', title: '⏱️ Kısmi Çalışma Kaydedildi', text: `Seans tamamlanmadı, ancak çalıştığın ${methodMinutes} dakika bugünkü sürene eklendi!`, timer: 3000, showConfirmButton: false });
       }
@@ -384,186 +443,72 @@ const StudentDashboard = ({ children }) => {
   const acceptedAppt = (myAppointments || []).filter(a => a?.status === 'accepted');
   const pendingAppt = (myAppointments || []).filter(a => a?.status === 'pending').length;
 
-  const HomeContent = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      {/* Competition Arena Quick Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%)',
-        color: 'white', padding: '1.4rem 1.75rem', borderRadius: 20,
-        marginBottom: '1.5rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.25rem',
-        boxShadow: '0 10px 30px rgba(49, 46, 129, 0.3)', border: '1px solid rgba(255,255,255,0.15)',
-        position: 'relative', overflow: 'hidden'
-      }}>
-        <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', position: 'relative', zIndex: 1 }}>
-          <div style={{
-            width: 54, height: 54, borderRadius: 16, background: 'linear-gradient(135deg, #fbbf24, #d97706)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 6px 16px rgba(217,119,6,0.4)', flexShrink: 0
-          }}>
-            <Trophy size={28} color="white" />
-          </div>
-          <div>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', background: 'rgba(245,158,11,0.2)', color: '#fbbf24', padding: '0.25rem 0.75rem', borderRadius: 20, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, border: '1px solid rgba(245,158,11,0.4)' }}>
-              <Flame size={14} /> Canlı Rekabet & Sıralama
-            </span>
-            <h3 style={{ margin: '0.4rem 0 0.15rem', fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>
-              Bugün Diğer Öğrenciler Kaç Saat Çalıştı?
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.85, maxWidth: '580px' }}>
-              Sınıf arkadaşlarının bugünkü canlı çalışma sürelerini gör, rakip seç ve günün şampiyonluk kürsüsüne tırman!
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setDashTab('leaderboard')}
-          style={{
-            background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#78350f',
-            border: 'none', borderRadius: 14, padding: '0.75rem 1.4rem', fontSize: '0.92rem',
-            fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-            boxShadow: '0 6px 18px rgba(245,158,11,0.35)', transition: 'all 0.2s',
-            position: 'relative', zIndex: 1, flexShrink: 0
-          }}
-        >
-          <Award size={18} /> Arenaya Katıl & Yarış →
-        </button>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
-        <div className="card" style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.875rem' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Target size={16} color="white" /></div>
-            <h3 style={{ margin: 0, color: '#1e293b' }}>Anlık Durum</h3>
-          </div>
-          <span className={`status-badge ${userData.status === 'studying' ? 'status-studying' : 'status-not-studying'}`} style={{ fontSize: '0.9rem', padding: '0.45rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            {userData.status === 'studying' ? <>Şu an çalışıyorsun <BookOpen size={15} /></> : <>Şu an çalışmıyorsun <Clock size={15} /></>}
-          </span>
-          <LiveSessionCounter startTime={userData.studySessionStart} status={userData.status} />
-        </div>
-
-        <div className="card" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.875rem' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Clock size={16} color="white" /></div>
-            <h3 style={{ margin: 0, color: '#1e293b' }}>Çalışma Süresi</h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <StudyStatBox label="Bugün" value={`${Math.floor(todayTotalMinutes / 60)}sa ${Math.round(todayTotalMinutes % 60)}dk`} color="#059669" bg="rgba(16,185,129,0.1)" border="rgba(16,185,129,0.2)" />
-            <StudyStatBox label="Toplam" value={`${totalStudyHours.toFixed(1)}sa`} color="#6366f1" bg="rgba(99,102,241,0.08)" border="rgba(99,102,241,0.15)" />
-          </div>
-        </div>
-
-        {/* Events card - Collapsible Accordion */}
-        <div className="card" style={{ background: 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)', border: '1px solid rgba(6,182,212,0.2)' }}>
-          <div 
-            onClick={() => setShowEvents(!showEvents)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', flexWrap: 'wrap', gap: '0.6rem' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#06b6d4,#0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={16} color="white" /></div>
-              <h3 style={{ margin: 0, color: '#1e293b' }}>Yaklaşan Etkinlikler</h3>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              {events && events.length > 0 && (
-                <span style={{ background: '#ef4444', color: 'white', padding: '0.2rem 0.65rem', borderRadius: 99, fontSize: '0.78rem', fontWeight: 900, boxShadow: '0 2px 6px rgba(239,68,68,0.35)' }}>
-                  🔔 {events.length} Yeni Etkinlik
-                </span>
-              )}
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0891b2' }}>
-                {showEvents ? '▲ Gizle' : '▼ Göster'}
-              </span>
-            </div>
-          </div>
-
-          {showEvents && (
-            <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(6,182,212,0.2)', paddingTop: '0.875rem' }}>
-              {events.length === 0
-                ? <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Planlanmış etkinlik yok.</p>
-                : events.map(ev => (
-                  <div key={ev.id} style={{ padding: '0.65rem 0.875rem', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 8, marginBottom: '0.4rem' }}>
-                    <strong style={{ color: '#0891b2', fontSize: '0.88rem' }}>{ev.title}</strong>
-                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>{new Date(ev.date).toLocaleString('tr-TR')}</p>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-
-        {/* Coach recommendation - Collapsible Accordion */}
-        <div className="card" style={{ background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)', border: '1px solid rgba(236,72,153,0.2)' }}>
-          <div 
-            onClick={() => setShowAdvice(!showAdvice)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', flexWrap: 'wrap', gap: '0.6rem' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#ec4899,#db2777)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Target size={16} color="white" /></div>
-              <h3 style={{ margin: 0, color: '#1e293b' }}>Koçun Tavsiyeleri</h3>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              {userData.coachRecommendation && (
-                <span style={{ background: '#ec4899', color: 'white', padding: '0.2rem 0.65rem', borderRadius: 99, fontSize: '0.78rem', fontWeight: 900, boxShadow: '0 2px 6px rgba(236,72,153,0.35)' }}>
-                  💬 Yeni Tavsiye Notu
-                </span>
-              )}
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#be185d' }}>
-                {showAdvice ? '▲ Gizle' : '▼ Detayları Göster'}
-              </span>
-            </div>
-          </div>
-
-          {showAdvice && (
-            <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(236,72,153,0.2)', paddingTop: '0.875rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-                <button
-                  onClick={() => handleGuardedNavigation(() => navigate('/student/coach-advice'))}
-                  style={{
-                    background: 'linear-gradient(135deg,#ec4899,#db2777)', color: 'white',
-                    border: 'none', borderRadius: 20, padding: '0.45rem 1rem', fontSize: '0.8rem',
-                    fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-                    boxShadow: '0 4px 12px rgba(236,72,153,0.3)', transition: 'all 0.2s'
-                  }}
-                >
-                  <BookOpen size={14} /> Rehberleri İncele ➔
-                </button>
-              </div>
-              {userData.coachRecommendation
-                ? <div style={{ padding: '0.875rem 1rem', background: 'rgba(236,72,153,0.06)', borderRadius: 10, border: '1px solid rgba(236,72,153,0.15)', borderLeft: '4px solid #ec4899', marginBottom: '0.75rem' }}>
-                    <p style={{ margin: 0, color: '#be185d', fontWeight: 600, fontSize: '0.9rem' }}>"{userData.coachRecommendation}"</p>
-                  </div>
-                : <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Henüz yeni bir tavsiye notu yok.</p>
-              }
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '0.75rem' }}>
-                <div style={{ padding: '0.75rem 1rem', background: 'white', borderRadius: 12, border: '1px dashed #ec4899', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.2s' }}
-                     onClick={() => handleGuardedNavigation(() => navigate('/student/coach-advice', { state: { section: 'reading' } }))}>
-                  <span style={{ fontSize: '0.85rem', color: '#831843', fontWeight: 700 }}>📖 4 Kurşun Kalemle Okuma Yöntemi</span>
-                  <span style={{ fontSize: '0.75rem', background: '#fdf2f8', color: '#db2777', padding: '0.2rem 0.5rem', borderRadius: 8, fontWeight: 800 }}>Özel Metot</span>
-                </div>
-                <div style={{ padding: '0.75rem 1rem', background: 'white', borderRadius: 12, border: '1px dashed #10b981', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.2s' }}
-                     onClick={() => handleGuardedNavigation(() => navigate('/student/coach-advice', { state: { section: 'breathing' } }))}>
-                  <span style={{ fontSize: '0.85rem', color: '#065f46', fontWeight: 700 }}>🧘 Odaklanma & Nefes Egzersizleri</span>
-                  <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#059669', padding: '0.2rem 0.5rem', borderRadius: 8, fontWeight: 800 }}>Sınav & Odak</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Ana Sayfa Çalışma Takvimi ve Isı Haritası */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <StudyHeatmapCalendar studentId={currentUser?.uid} studentName={currentUser?.displayName || 'Öğrenci'} isCoachView={false} />
-      </div>
-    </motion.div>
-  );
 
   // ── Appointments ──────────────────────────────────────────
-  const AppointmentsContent = () => (
+  const AppointmentsContent = () => {
+    const handleDeleteAppointment = async (id) => {
+      try {
+        await deleteDoc(doc(db, 'appointmentRequests', id));
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Hata', 'Randevu silinirken bir hata oluştu.', 'error');
+      }
+    };
+
+    const cleanExpiredAppointments = async () => {
+      const now = new Date();
+      const toDelete = myAppointments.filter(req => {
+        if (req.status === 'accepted' && req.appointmentTime) {
+          return new Date(req.appointmentTime) < now;
+        }
+        if (req.requestedAt) {
+          const reqDate = new Date(req.requestedAt.toMillis ? req.requestedAt.toMillis() : req.requestedAt);
+          return (now - reqDate) / (1000 * 60 * 60 * 24) > 2;
+        }
+        return false;
+      });
+
+      if (toDelete.length === 0) {
+        Swal.fire('Bilgi', 'Silinecek süresi geçmiş randevu bulunamadı.', 'info');
+        return;
+      }
+
+      const result = await Swal.fire({
+        title: 'Emin misiniz?',
+        text: `${toDelete.length} adet süresi geçmiş randevu talebi silinecek.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Temizle',
+        cancelButtonText: 'İptal',
+        confirmButtonColor: '#ef4444'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          await Promise.all(toDelete.map(req => deleteDoc(doc(db, 'appointmentRequests', req.id))));
+          Swal.fire('Başarılı', 'Süresi geçmiş randevular temizlendi.', 'success');
+        } catch (e) {
+          console.error(e);
+          Swal.fire('Hata', 'Temizleme işlemi sırasında hata oluştu.', 'error');
+        }
+      }
+    };
+
+    return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h2 style={{ margin: 0 }}>📅 Randevularım</h2>
-        <button className="btn btn-primary" onClick={() => setAppointmentModal(true)}>
-          <Phone size={16} /> Yeni Randevu Talebi
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {myAppointments.length > 0 && (
+            <button className="btn btn-secondary" onClick={cleanExpiredAppointments} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid #e2e8f0', background: 'white', color: '#64748b' }}>
+              <Trash2 size={15} /> Temizle
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => setAppointmentModal(true)}>
+            <Phone size={16} /> Yeni Talep
+          </button>
+        </div>
       </div>
       {myAppointments.length === 0
         ? <div className="card" style={{ textAlign: 'center', padding: '3rem', background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)' }}>
@@ -597,13 +542,17 @@ const StudentDashboard = ({ children }) => {
                       <p style={{ margin: '0.2rem 0 0', fontWeight: 800, color: '#059669', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={15} /> {new Date(req.appointmentTime).toLocaleString('tr-TR')}</p>
                     </div>
                   )}
+                  <button onClick={() => handleDeleteAppointment(req.id)} style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '0.25rem' }} title="Sil" onMouseOver={e => e.currentTarget.style.color = '#ef4444'} onMouseOut={e => e.currentTarget.style.color = '#cbd5e1'}>
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
       }
     </motion.div>
-  );
+    );
+  };
 
   return (
     <div className="app-container">
@@ -636,11 +585,30 @@ const StudentDashboard = ({ children }) => {
       {/* ── Mobile Header Topbar ── */}
       <div className="mobile-header" style={{ background: '#ffffff', borderBottom: '1px solid var(--sidebar-border)', padding: '0.4rem 1rem' }}>
         <div onClick={() => handleGuardedNavigation(() => { navigate('/student'); setDashTab('home'); })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0.2rem 0' }} title="Ana Sayfaya Dön">
-          <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 62, width: 'auto', objectFit: 'contain' }} />
+          <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 62, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
         </div>
-        <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menüyü Aç" style={{ color: '#0f172a' }}>
-          <Menu size={26} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setIsNotifOpen(!isNotifOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', color: '#0f172a' }}>
+              <Bell size={24} />
+              {notifications.length > 0 && <span style={{ position: 'absolute', top: 4, right: 4, width: 10, height: 10, background: '#ef4444', borderRadius: '50%', border: '2px solid white' }}></span>}
+            </button>
+            {isNotifOpen && (
+              <div className="notification-dropdown">
+                <div className="notification-dropdown-header">Bildirimler</div>
+                {notifications.length === 0 ? <div style={{ padding: '2rem 1rem', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>Yeni bildirim yok.</div> : notifications.map(n => (
+                  <div key={n.id} className="notification-item">
+                    <p>{n.message}</p>
+                    <span>{new Date(n.createdAt?.toMillis ? n.createdAt.toMillis() : (n.createdAt || Date.now())).toLocaleString('tr-TR')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(true)} aria-label="Menüyü Aç" style={{ color: '#0f172a' }}>
+            <Menu size={26} />
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile Drawer Overlay (Visible when hamburger clicked) ── */}
@@ -666,7 +634,7 @@ const StudentDashboard = ({ children }) => {
               <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--sidebar-border)', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
                   <div onClick={() => { setIsMobileMenuOpen(false); handleGuardedNavigation(() => { navigate('/student'); setDashTab('home'); }); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0.3rem 0.5rem', borderRadius: 12 }}>
-                    <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
+                    <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 64, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
                   </div>
                   <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'rgba(30,119,150,0.1)', border: 'none', color: '#0f172a', padding: '0.4rem', borderRadius: 8, cursor: 'pointer', display: 'flex' }}>
                     <X size={20} />
@@ -749,19 +717,39 @@ const StudentDashboard = ({ children }) => {
         {/* Brand Logo in Sidebar */}
         <div style={{ padding: '0.8rem 0.5rem 1.4rem', borderBottom: '1px solid var(--sidebar-border)', marginBottom: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <div onClick={() => handleGuardedNavigation(() => { navigate('/student'); setDashTab('home'); })} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.2s', padding: '0.5rem 0.8rem', borderRadius: 16 }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} title="Ana Sayfaya Dön">
-            <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 86, width: 'auto', objectFit: 'contain' }} />
+            <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 86, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
           </div>
         </div>
 
-        <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer' }} onClick={() => handleGuardedNavigation(() => navigate('/profile'))} title="Profilinizi Düzenleyin">
+        <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => handleGuardedNavigation(() => navigate('/profile'))} title="Profilinizi Düzenleyin">
             <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(30, 119, 150, 0.25)', overflow: 'hidden' }}>
               {userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓'}
             </div>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>Öğrenci Paneli</p>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: '#1e7796', fontWeight: 600 }}>{userData.name || userData.email}</p>
+            <div style={{ overflow: 'hidden' }}>
+              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>Öğrenci Paneli</p>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: '#1e7796', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userData.name || userData.email}</p>
             </div>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setIsNotifOpen(!isNotifOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem', color: '#64748b' }}>
+              <Bell size={20} />
+              {notifications.length > 0 && <span style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', border: '1.5px solid white' }}></span>}
+            </button>
+            {isNotifOpen && (
+              <div className="notification-dropdown">
+                <div className="notification-dropdown-header">
+                  Bildirimler
+                  <button onClick={() => setIsNotifOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '0.2rem' }}><X size={18} /></button>
+                </div>
+                {notifications.length === 0 ? <div style={{ padding: '2rem 1rem', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>Yeni bildirim yok.</div> : notifications.map(n => (
+                  <div key={n.id} className="notification-item">
+                    <p>{n.message}</p>
+                    <span>{new Date(n.createdAt?.toMillis ? n.createdAt.toMillis() : (n.createdAt || Date.now())).toLocaleString('tr-TR')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -893,6 +881,24 @@ const StudentDashboard = ({ children }) => {
               </p>
             </div>
           </div>
+          
+          {/* Bugün Çalışılan Süre */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '0.8rem 1.4rem',
+            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)', minWidth: '150px'
+          }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>
+              Bugün Çalışılan
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+              <Timer size={22} color="#10b981" />
+              <span style={{ fontSize: '1.45rem', fontWeight: 900 }}>
+                {Math.floor((todayTotalMinutes || 0) / 60)}s {Math.floor((todayTotalMinutes || 0) % 60)}dk
+              </span>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
             <TreeWidget studyHours={todayTotalMinutes / 60} totalHours={Math.max(Number(userData.treePoints || 0), Number(userData.totalStudyHours || 0), Number(totalSessionHours || 0))} />
             <button
@@ -900,7 +906,11 @@ const StudentDashboard = ({ children }) => {
                 if (userData.status === 'studying') {
                   toggleStatus();
                 } else {
-                  setDashTab('pomodoro');
+                  if (location.pathname !== '/student') {
+                    navigate('/student', { state: { dashTab: 'pomodoro' } });
+                  } else {
+                    setDashTab('pomodoro');
+                  }
                 }
               }}
               style={{
@@ -961,7 +971,6 @@ const StudentDashboard = ({ children }) => {
           <>
             <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1.5rem', background: 'white', padding: '0.3rem', borderRadius: 12, width: 'fit-content', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', flexWrap: 'wrap' }}>
               {[
-                { id: 'home',         label: 'Anasayfa', icon: Home },
                 { id: 'leaderboard',  label: 'Canlı Liderlik Arenası', icon: Trophy },
                 { id: 'pomodoro',     label: 'Çalışma Yöntemleri', icon: Timer },
                 { id: 'appointments', label: `Randevularım${acceptedAppt.length > 0 ? ` (${acceptedAppt.length})` : ''}`, icon: Calendar },
@@ -983,9 +992,7 @@ const StudentDashboard = ({ children }) => {
               })}
             </div>
 
-            <div style={{ display: dashTab === 'home' ? 'block' : 'none' }}>
-              <HomeContent />
-            </div>
+
 
             <div style={{ display: dashTab === 'leaderboard' ? 'block' : 'none' }}>
               <LiveLeaderboard />

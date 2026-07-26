@@ -1,7 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+const MOTIVATION_QUOTES = [
+  "Bugün hedeflerini aşmak ve efsanevi ağacını yeşertmek için harika bir gün.",
+  "En uzun yolculuk bile tek bir adımla başlar.",
+  "Başarı, her gün tekrarlanan küçük çabaların toplamıdır.",
+  "Gelecek, bugünden hazırlananlara aittir.",
+  "Mazeret yok, sadece sonuç var. Bugün elinden gelenin en iyisini yap."
+];
+
 const LoadingMotivation = ({ onFinish, userName }) => {
+  const [quote] = useState(() => MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)]);
+
   const { currentUser } = useAuth();
 
   const displayName = currentUser?.displayName 
@@ -40,6 +50,9 @@ const LoadingMotivation = ({ onFinish, userName }) => {
         maxWidth: 460,
         width: '100%'
       }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <img src="/logo-full.png" alt="Menutu Koçluk" style={{ height: 60, width: 'auto', objectFit: 'contain' }} />
+        </div>
         <h1 style={{
           fontSize: 'clamp(2rem, 5vw, 2.8rem)',
           fontWeight: 900,
@@ -56,6 +69,16 @@ const LoadingMotivation = ({ onFinish, userName }) => {
           margin: 0
         }}>
           {displayName}
+        </p>
+        <p style={{
+          fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
+          fontWeight: 600,
+          color: '#64748b',
+          marginTop: '1.5rem',
+          lineHeight: '1.5',
+          fontStyle: 'italic'
+        }}>
+          "{quote}"
         </p>
       </div>
     </div>

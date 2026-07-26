@@ -63,6 +63,11 @@ html {
   scroll-behavior: smooth;
   max-width: 100vw;
   overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  height: 100%;
+  height: 100dvh;
 }
 
 @keyframes ambientShift {
@@ -88,9 +93,11 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
   position: relative;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 body::before {
@@ -108,6 +115,16 @@ body::before {
   pointer-events: none;
   z-index: -1;
   animation: floatOrbs 25s ease-in-out infinite;
+}
+
+/* Disable expensive body::before on mobile for GPU performance */
+@media (max-width: 768px) {
+  body::before {
+    display: none;
+  }
+  body {
+    background-attachment: scroll;
+  }
 }
 
 /* ── Glass Panel ──────────────────────────────────────── */
@@ -279,7 +296,7 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
 .input-field::placeholder { color: #94a3b8; }
 
 /* ── Layout ──────────────────────────────────────────────── */
-.app-container { display: flex; min-height: 100vh; width: 100%; overflow-x: hidden; }
+.app-container { display: flex; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
 
 .main-content {
   flex: 1;
@@ -288,9 +305,12 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   overflow-x: hidden;
   background: var(--gradient-page);
   background-attachment: fixed;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   min-width: 0;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Sidebar (white/clean — Student Panel) ───────────────── */
@@ -303,8 +323,12 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   padding: 1.5rem 0.875rem;
   box-shadow: 4px 0 24px rgba(30, 119, 150, 0.08);
   border-right: 1px solid var(--sidebar-border);
-  position: relative;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar::before, .sidebar::after {
@@ -322,6 +346,7 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   align-items: center;
   gap: 0.65rem;
   padding: 0.65rem 0.875rem;
+  min-height: 44px;
   border-radius: 10px;
   cursor: pointer;
   border: 1px solid transparent;
@@ -334,6 +359,7 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   transition: all 0.18s ease;
   font-family: 'Outfit', sans-serif;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sidebar-nav-btn:hover {
@@ -364,12 +390,11 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 2rem;
-  background: rgba(30, 27, 75, 0.95);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 2px solid transparent;
-  border-image: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #06b6d4) 1;
-  box-shadow: 0 4px 20px rgba(30, 27, 75, 0.3);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .coach-topbar-logo {
@@ -392,28 +417,30 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 1rem;
+  min-height: 44px;
   border-radius: 10px;
   cursor: pointer;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(255,255,255,0.65);
-  font-weight: 500;
+  color: #64748b;
+  font-weight: 600;
   font-size: 0.88rem;
   white-space: nowrap;
   transition: all 0.18s ease;
   font-family: 'Outfit', sans-serif;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .coach-tab-btn:hover {
-  background: rgba(255,255,255,0.08);
-  color: white;
+  background: rgba(99,102,241,0.06);
+  color: #1e293b;
 }
 
 .coach-tab-btn.active {
   background: var(--gradient-primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+  box-shadow: 0 4px 12px rgba(99,102,241,0.25);
 }
 
 .coach-topbar-actions {
@@ -548,7 +575,7 @@ p { margin-bottom: 0.75rem; color: var(--text-muted); }
   100% { background-position: 0% 50%; }
 }
 
-.tree-sway { animation: sway 6s ease-in-out infinite; transform-origin: bottom center; }
+.tree-sway { animation: sway 10s ease-in-out infinite; transform-origin: bottom center; will-change: transform; }
 .tree-grow { animation: growFromSeed 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .fade-in-up { animation: fadeInUp 0.4s ease both; }
 .activity-new { animation: fadeInUp 0.35s ease both; }
@@ -611,12 +638,15 @@ label {
   border: 1px solid rgba(255,255,255,0.2);
   color: white;
   padding: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hamburger-btn:hover {
@@ -638,12 +668,17 @@ label {
   width: 285px;
   max-width: 85vw;
   height: 100vh;
+  height: 100dvh;
   background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0.875rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   box-shadow: 10px 0 30px rgba(0,0,0,0.5);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   position: relative;
 }
 
@@ -664,6 +699,13 @@ label {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    position: sticky !important;
+    top: 0;
+    z-index: 990;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   }
   .app-container {
     flex-direction: column !important;
@@ -672,6 +714,10 @@ label {
     padding: 1.5rem 1.25rem !important;
     width: 100% !important;
     max-width: 100vw !important;
+    height: auto !important;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
   }
   .coach-topbar-nav {
     display: none !important;
@@ -687,6 +733,7 @@ label {
     width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
   .card {
     padding: 1.35rem 1.15rem !important;
@@ -734,7 +781,7 @@ label {
 
 .osym-sheet-container {
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
   word-break: break-word;
 }
 
@@ -799,3 +846,104 @@ label {
   }
 }
 
+/* ── Prefers Reduced Motion — disable all animations for accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  body::before {
+    display: none;
+  }
+}
+
+/* ── Mobile background-attachment fix (iOS doesn't support fixed) ── */
+@media (max-width: 1024px) {
+  .main-content {
+    background-attachment: scroll !important;
+  }
+}
+
+/* ── Body scroll lock utility class ── */
+body.scroll-locked {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Notifications Dropdown ── */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 340px;
+  max-width: 90vw;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+  z-index: 9999;
+  max-height: 420px;
+  overflow-y: auto;
+  transform-origin: top right;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+.notification-dropdown-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.notification-item {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f8fafc;
+  font-size: 0.9rem;
+  color: #334155;
+  transition: background 0.2s;
+  cursor: default;
+}
+.notification-item:hover {
+  background: #f8fafc;
+}
+.notification-item p {
+  margin: 0 0 0.4rem 0;
+  line-height: 1.4;
+}
+.notification-item span {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .notification-dropdown {
+    position: fixed;
+    top: 75px;
+    right: 50%;
+    transform: translateX(50%);
+    width: calc(100vw - 32px);
+    max-width: 400px;
+    animation: fadeInSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fadeInSlideUp {
+  from { opacity: 0; transform: translateX(50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(50%) translateY(0); }
+}

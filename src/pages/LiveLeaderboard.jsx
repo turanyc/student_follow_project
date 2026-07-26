@@ -197,13 +197,38 @@ const LiveLeaderboard = () => {
   const studentAboveMe = myIndex > 0 ? sortedStudents[myIndex - 1] : null;
 
   // Pin rival
-  const handlePinRival = (id) => {
+  const handlePinRival = async (id, name) => {
     if (pinnedRivalId === id) {
       setPinnedRivalId(null);
       localStorage.removeItem('pinnedRivalId');
     } else {
       setPinnedRivalId(id);
       localStorage.setItem('pinnedRivalId', id);
+      
+      try {
+        if (id && currentUser) {
+          const pinName = myData?.name || myData?.email || currentUser.displayName || 'Bir öğrenci';
+          await addDoc(collection(db, 'users', id, 'notifications'), {
+            title: '⚔️ Yeni Bir Rakibin Var!',
+            message: `${pinName} seni çalışma arenasında hedef (rakip) olarak belirledi!`,
+            type: 'rival',
+            fromName: pinName,
+            createdAt: serverTimestamp(),
+            isRead: false
+          });
+          await addDoc(collection(db, 'notifications'), {
+            userId: id,
+            userName: name || 'Öğrenci',
+            subject: '⚔️ Yeni Bir Rakibin Var!',
+            message: `${pinName} seni çalışma arenasında hedef (rakip) olarak belirledi!`,
+            isRead: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        console.error('Rival notification error:', e);
+      }
+
       Swal.fire({
         icon: 'success',
         title: '⚔️ Rakip Belirlendi!',
@@ -219,12 +244,13 @@ const LiveLeaderboard = () => {
     setCheeredIds(prev => ({ ...prev, [id]: true }));
     try {
       if (id && currentUser) {
+        const cheererName = myData?.name || myData?.email || currentUser.displayName || 'Bir sınıf arkadaşın';
         // Send to target user's personal notifications
         await addDoc(collection(db, 'users', id, 'notifications'), {
           title: '🔥 Biri Seni Ateşledi!',
-          message: `${currentUser.displayName || 'Bir sınıf arkadaşın'} çalışma arenasında seni tebrik edip çalışma ateşi yolladı! (+5 Puan kazandın!)`,
+          message: `${cheererName} sana ateşle gönderdi! Çalışma arenasında tebrik edildin (+5 Puan kazandın!)`,
           type: 'cheer',
-          fromName: currentUser.displayName || 'Sınıf Arkadaşın',
+          fromName: cheererName,
           createdAt: serverTimestamp(),
           isRead: false
         });
@@ -233,7 +259,7 @@ const LiveLeaderboard = () => {
           userId: id,
           userName: name || 'Öğrenci',
           subject: '🔥 Biri Seni Ateşledi!',
-          message: `${currentUser.displayName || 'Bir sınıf arkadaşın'} çalışma arenasında seni tebrik edip çalışma ateşi yolladı! (+5 Puan kazandın!)`,
+          message: `${cheererName} sana ateşle gönderdi! Çalışma arenasında tebrik edildin (+5 Puan kazandın!)`,
           isRead: false,
           createdAt: serverTimestamp(),
         });
@@ -388,7 +414,14 @@ const LiveLeaderboard = () => {
             }}>
               <Trophy size={15} /> CANLI ÇALIŞMA ARENASI & LİDERLİK
             </div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, margin: '0 0 0.6rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <h1 style={{ 
+              fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 900, margin: '0 0 0.6rem', letterSpacing: '-0.02em', 
+              display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap',
+              background: 'linear-gradient(90deg, #fde047 0%, #f59e0b 50%, #ef4444 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 4px 15px rgba(245, 158, 11, 0.4)'
+            }}>
               Bugün Kim Ne Kadar Çalıştı? 🔥
             </h1>
             <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.98rem', maxWidth: '640px', lineHeight: 1.6 }}>
@@ -487,20 +520,6 @@ const LiveLeaderboard = () => {
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '1.25rem',
           alignItems: 'stretch', margin: '1.5rem 0 0.5rem'
         }}>
-          {/* #2 Silver */}
-          <PodiumCard
-            student={sortedStudents[1]}
-            rank={2}
-            color="#64748b"
-            border="#94a3b8"
-            bg="linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)"
-            height="180px"
-            timeframe={timeframe}
-            formatStudyDuration={formatStudyDuration}
-            onCheer={handleCheer}
-            cheered={cheeredIds[sortedStudents[1].id]}
-          />
-
           {/* #1 Gold Champion */}
           <PodiumCard
             student={sortedStudents[0]}
@@ -514,6 +533,20 @@ const LiveLeaderboard = () => {
             onCheer={handleCheer}
             cheered={cheeredIds[sortedStudents[0].id]}
             isChampion
+          />
+
+          {/* #2 Silver */}
+          <PodiumCard
+            student={sortedStudents[1]}
+            rank={2}
+            color="#64748b"
+            border="#94a3b8"
+            bg="linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)"
+            height="180px"
+            timeframe={timeframe}
+            formatStudyDuration={formatStudyDuration}
+            onCheer={handleCheer}
+            cheered={cheeredIds[sortedStudents[1].id]}
           />
 
           {/* #3 Bronze */}
@@ -555,7 +588,7 @@ const LiveLeaderboard = () => {
               ? formatStudyDuration(s.todayMinutes || 0)
               : timeframe === 'alltime'
                 ? `${(s.totalStudyHours || 0).toFixed(1)} Saat`
-                : `${effPoints} Puan`;
+                : `${Number(effPoints.toFixed(2))} Puan`;
 
             return (
               <motion.div
@@ -682,7 +715,7 @@ const LiveLeaderboard = () => {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handlePinRival(s.id)}
+                        onClick={() => handlePinRival(s.id, s.name)}
                         style={{
                           padding: '0.5rem 0.85rem', borderRadius: 12,
                           border: `1px solid ${isPinned ? '#f59e0b' : '#6366f1'}`,
@@ -717,7 +750,7 @@ const PodiumCard = ({ student, rank, color, border, bg, height, timeframe, forma
     ? formatStudyDuration(student.todayMinutes || 0)
     : timeframe === 'alltime'
       ? `${(student.totalStudyHours || 0).toFixed(1)} Saat`
-      : `${effPoints} Puan`;
+      : `${Number(effPoints.toFixed(2))} Puan`;
 
   return (
     <motion.div

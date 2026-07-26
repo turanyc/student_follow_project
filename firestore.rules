@@ -2,16 +2,19 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Kullanıcı kendi profilini okuyabilir/yazabilir, herkes okuyabilir (koç için)
+    // Kullanıcı okuyabilir/yazabilir
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null;
       
-      // Alt koleksiyonlar: kendi kullanıcısı yazabilir, giriş yapan herkes okuyabilir
+      // Alt koleksiyonlar:
       match /{subcollection}/{docId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null;
       }
+    }
+    
+    // Global notifications
+    match /notifications/{docId} {
+      allow read, write: if request.auth != null;
     }
     
     // Events: herkes okuyabilir, giriş yapan herkes yazabilir

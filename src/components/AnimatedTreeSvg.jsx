@@ -5,10 +5,10 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
   const lvl = Number(level) || 0;
   const pts = Number(points) || 0;
   const isGold = lvl >= 5;
-  const particleCount = Math.min(20, Math.max(3, Math.floor(pts || (lvl * 30 + 5))));
+  const particleCount = Math.min(8, Math.max(2, Math.floor((pts || (lvl * 30 + 5)) / 3)));
 
   return (
-    <svg viewBox="-25 -25 250 240" width="100%" height="100%" style={{ overflow: 'visible' }} className={className || (animated && lvl > 1 ? "tree-sway" : "")}>
+    <svg viewBox="-25 -75 250 290" width="100%" height="100%" style={{ overflow: 'visible' }} className={className || (animated && lvl > 1 ? "tree-sway" : "")}>
       <defs>
         <linearGradient id="trunkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#78350f" />
@@ -50,15 +50,15 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
           <stop offset="100%" stopColor="#14532d" />
         </linearGradient>
         <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feGaussianBlur stdDeviation="4" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
         <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="10" result="blur" />
+          <feGaussianBlur stdDeviation="6" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
         <filter id="emeraldGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="12" result="blur" />
+          <feGaussianBlur stdDeviation="8" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
@@ -83,14 +83,14 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
             fill={isGold ? "#fbbf24" : "#10b981"}
             filter="url(#glow)"
             animate={{
-              y: [0, -12, 0],
-              opacity: [0.3, 1, 0.3],
-              scale: [0.8, 1.4, 0.8]
+              y: [0, -8, 0],
+              opacity: [0.3, 0.9, 0.3],
+              scale: [0.9, 1.2, 0.9]
             }}
             transition={{
-              duration: 2 + (i % 3) * 0.7,
+              duration: 4 + (i % 3) * 1.2,
               repeat: Infinity,
-              delay: i * 0.15,
+              delay: i * 0.3,
               ease: "easeInOut"
             }}
           />
@@ -403,15 +403,14 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
             {/* Golden fruits and energy orbs scattered across the wide canopy */}
             {animated ? [
               { cx: 10, cy: 35 }, { cx: 190, cy: 35 }, { cx: 100, cy: -12 }, { cx: 50, cy: 65 },
-              { cx: 150, cy: 65 }, { cx: -5, cy: 75 }, { cx: 205, cy: 75 }, { cx: 72, cy: 15 },
-              { cx: 128, cy: 15 }, { cx: 35, cy: 95 }, { cx: 165, cy: 95 }, { cx: 100, cy: 45 }, { cx: 100, cy: 80 }
+              { cx: 150, cy: 65 }, { cx: 72, cy: 15 }, { cx: 128, cy: 15 }
             ].map((p, idx) => (
               <g key={idx} transform={`translate(${p.cx}, ${p.cy})`}>
                 <circle r="4.8" fill="#fef08a" filter="url(#goldGlow)">
-                  <animate attributeName="r" values="2.5;7.5;2.5" dur={`${1 + idx * 0.15}s`} repeatCount="indefinite" />
+                  <animate attributeName="r" values="2.5;6;2.5" dur={`${3 + idx * 0.4}s`} repeatCount="indefinite" />
                 </circle>
                 <path d="M -8 0 L 8 0 M 0 -8 L 0 8" stroke="#fbbf24" strokeWidth="2">
-                  <animateTransform attributeName="transform" type="rotate" from="0" to="180" dur={`${2 + idx * 0.3}s`} repeatCount="indefinite" />
+                  <animateTransform attributeName="transform" type="rotate" from="0" to="180" dur={`${5 + idx * 0.6}s`} repeatCount="indefinite" />
                 </path>
               </g>
             )) : [
@@ -426,16 +425,16 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
         {lvl >= 10 && (
           <motion.g initial={animated ? { opacity: 0, scale: 0.8 } : undefined} animate={animated ? { opacity: 1, scale: 1 } : undefined} transition={{ duration: 2 }}>
             <path d="M74 180 L80 20 L120 20 L126 180 Z" fill="url(#trunkGrad)" />
-            <motion.g animate={animated ? { rotate: [-1.5, 1.5, -1.5], y: [-4, 4, -4] } : undefined} style={{ originX: '100px', originY: '100px' }} transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}>
+            <motion.g animate={animated ? { rotate: [-1, 1, -1], y: [-2, 2, -2] } : undefined} style={{ originX: '100px', originY: '100px' }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}>
               {/* Grand multi-directional intersecting orbits */}
               <circle cx="100" cy="75" r="118" fill="none" stroke="#fbbf24" strokeWidth="3.5" strokeDasharray="18 8" filter={animated ? "url(#goldGlow)" : undefined}>
-                {animated && <animateTransform attributeName="transform" type="rotate" from="0 100 75" to="360 100 75" dur="24s" repeatCount="indefinite" />}
+                {animated && <animateTransform attributeName="transform" type="rotate" from="0 100 75" to="360 100 75" dur="40s" repeatCount="indefinite" />}
               </circle>
               <ellipse cx="100" cy="75" rx="132" ry="52" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray="10 8" filter={animated ? "url(#emeraldGlow)" : undefined}>
-                {animated && <animateTransform attributeName="transform" type="rotate" from="360 100 75" to="0 100 75" dur="16s" repeatCount="indefinite" />}
+                {animated && <animateTransform attributeName="transform" type="rotate" from="360 100 75" to="0 100 75" dur="30s" repeatCount="indefinite" />}
               </ellipse>
               <ellipse cx="100" cy="75" rx="55" ry="128" fill="none" stroke="#eab308" strokeWidth="2.5" strokeDasharray="6 12" filter={animated ? "url(#goldGlow)" : undefined}>
-                {animated && <animateTransform attributeName="transform" type="rotate" from="0 100 75" to="-360 100 75" dur="20s" repeatCount="indefinite" />}
+                {animated && <animateTransform attributeName="transform" type="rotate" from="0 100 75" to="-360 100 75" dur="35s" repeatCount="indefinite" />}
               </ellipse>
               {/* Ascending upward branch structure */}
               <path d="M80 130 Q30 90 10 75" stroke="url(#trunkGrad)" strokeWidth="16" strokeLinecap="round" fill="none" />
@@ -464,26 +463,24 @@ const AnimatedTreeSvg = ({ level = 0, points = 0, animated = true, className = "
               {/* Sacred Peak Crown Emblem & Halo atop the summit */}
               <g transform="translate(100, -45)">
                 <circle r="18" fill="rgba(254, 240, 138, 0.4)" filter="url(#goldGlow)">
-                  <animate attributeName="r" values="14;24;14" dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="r" values="14;22;14" dur="4s" repeatCount="indefinite" />
                 </circle>
                 <polygon points="0,-18 6,-6 18,-6 9,2 13,15 0,7 -13,15 -9,2 -18,-6 -6,-6" fill="#fbbf24" stroke="#ffffff" strokeWidth="1.5" filter="url(#goldGlow)">
-                  {animated && <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="12s" repeatCount="indefinite" />}
+                  {animated && <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite" />}
                 </polygon>
               </g>
             </motion.g>
             {/* Luminous sacred sparks surrounding the pinnacle tree */}
             {animated ? [
               { cx: 10, cy: 10 }, { cx: 190, cy: 10 }, { cx: 100, cy: -50 }, { cx: 40, cy: -20 },
-              { cx: 160, cy: -20 }, { cx: 5, cy: 60 }, { cx: 195, cy: 60 }, { cx: 65, cy: 20 },
-              { cx: 135, cy: 20 }, { cx: 30, cy: 105 }, { cx: 170, cy: 105 }, { cx: 100, cy: 30 },
-              { cx: 100, cy: 70 }, { cx: 100, cy: 110 }
+              { cx: 160, cy: -20 }, { cx: 100, cy: 30 }, { cx: 100, cy: 110 }
             ].map((p, idx) => (
               <g key={idx} transform={`translate(${p.cx}, ${p.cy})`}>
                 <circle r="5.2" fill="#ffffff" filter="url(#goldGlow)">
-                  <animate attributeName="r" values="2;9;2" dur={`${0.8 + idx * 0.12}s`} repeatCount="indefinite" />
+                  <animate attributeName="r" values="2;7;2" dur={`${2.5 + idx * 0.3}s`} repeatCount="indefinite" />
                 </circle>
                 <path d="M -9 0 L 9 0 M 0 -9 L 0 9" stroke="#fbbf24" strokeWidth="2.4">
-                  <animateTransform attributeName="transform" type="rotate" from="0" to="180" dur={`${1.5 + idx * 0.25}s`} repeatCount="indefinite" />
+                  <animateTransform attributeName="transform" type="rotate" from="0" to="180" dur={`${4 + idx * 0.5}s`} repeatCount="indefinite" />
                 </path>
               </g>
             )) : [

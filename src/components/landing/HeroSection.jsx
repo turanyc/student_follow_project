@@ -46,7 +46,7 @@ const HeroSection = ({ onOpenAuth }) => {
           boxShadow: '0 4px 20px rgba(30, 119, 150, 0.12)'
         }}>
           <Sparkles size={16} color="#1e7796" />
-          <span>YKS, LGS ve Tüm Öğrenciler İçin Akıllı Koçluk Devrimi!</span>
+          <span>YKS, LGS, KPSS ve Tüm Öğrenciler için Akıllı Koçluk Devrimi!</span>
           <span style={{ background: '#1e7796', color: 'white', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: 99, fontWeight: 800 }}>YENİ</span>
         </div>
 
@@ -62,7 +62,7 @@ const HeroSection = ({ onOpenAuth }) => {
         }}>
           Geleceğini Şimdiden <br />
           <span style={{
-            color: '#1e7796',
+            color: '#bf8253',
             display: 'inline-block'
           }}>
             Akıllı Koçlukla İnşa Et!
@@ -87,7 +87,7 @@ const HeroSection = ({ onOpenAuth }) => {
             onClick={() => onOpenAuth('register')}
             style={{
               padding: '1.05rem 2.4rem', borderRadius: 16, border: 'none',
-              background: '#0f172a',
+              background: '#bf8253',
               color: 'white', fontWeight: 800, fontSize: '1.05rem', cursor: 'pointer',
               transition: 'all 0.3s', boxShadow: '0 10px 25px rgba(15, 23, 42, 0.3)',
               display: 'flex', alignItems: 'center', gap: '0.75rem'

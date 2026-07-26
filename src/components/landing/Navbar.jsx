@@ -4,8 +4,11 @@ import { Target, ArrowRight, Menu, X } from 'lucide-react';
 const Navbar = ({ onOpenAuth }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const scrollToSection = (id) => {
+  const scrollToSection = (id, featureTabId = null) => {
     setMobileMenuOpen(false);
+    if (featureTabId) {
+      window.dispatchEvent(new CustomEvent('selectFeature', { detail: featureTabId }));
+    }
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -18,7 +21,7 @@ const Navbar = ({ onOpenAuth }) => {
         .hamburger-btn {
           display: none !important;
         }
-        @media (max-width: 900px) {
+        @media (max-width: 1024px) {
           .nav-links-desktop, .nav-buttons-desktop {
             display: none !important;
           }
@@ -70,9 +73,9 @@ const Navbar = ({ onOpenAuth }) => {
               title="Menutu Koçluk - Ana Sayfa"
             >
               <img
-                src="/menutu_logo_.png"
+                src="/logo-full.png"
                 alt="Menutu Koçluk"
-                style={{ height: 68, width: 'auto', objectFit: 'contain' }}
+                style={{ height: 68, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
               />
             </div>
           </div>
@@ -103,7 +106,7 @@ const Navbar = ({ onOpenAuth }) => {
               Ağaç Evrimi
             </span>
             <span
-              onClick={() => scrollToSection('gamification')}
+              onClick={() => scrollToSection('studymap-section', 'studymap')}
               style={{ cursor: 'pointer', transition: 'color 0.2s' }}
               onMouseOver={e => e.currentTarget.style.color = '#f59e0b'}
               onMouseOut={e => e.currentTarget.style.color = '#334155'}
@@ -138,7 +141,7 @@ const Navbar = ({ onOpenAuth }) => {
               onClick={() => onOpenAuth('register')}
               style={{
                 padding: '0.6rem 1.3rem', borderRadius: 10, border: 'none',
-                background: '#0f172a', color: 'white',
+                background: '#bf8253', color: 'white',
                 fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', transition: 'all 0.25s',
                 boxShadow: '0 4px 15px rgba(15, 23, 42, 0.3)',
                 display: 'flex', alignItems: 'center', gap: '0.4rem'
@@ -151,74 +154,78 @@ const Navbar = ({ onOpenAuth }) => {
             </button>
           </div>
         </div>
+
+        {/* Mobile Drawer Menu positioned at top 100% inside sticky header to avoid overlapping logo */}
+        {mobileMenuOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            background: 'white',
+            borderBottom: '1px solid #cbd5e1',
+            padding: '1.25rem 5%',
+            zIndex: 999,
+            boxShadow: '0 15px 30px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.85rem',
+            maxHeight: 'calc(100vh - 85px)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
+          }}>
+            <div
+              onClick={() => scrollToSection('features')}
+              style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
+            >
+              Özellikler
+            </div>
+            <div
+              onClick={() => scrollToSection('gamification')}
+              style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
+            >
+              Ağaç Evrimi
+            </div>
+            <div
+              onClick={() => scrollToSection('studymap-section', 'studymap')}
+              style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
+            >
+              Anlık Çalışma Haritan
+            </div>
+            <div
+              onClick={() => scrollToSection('contact')}
+              style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
+            >
+              İletişim
+            </div>
+
+            <div style={{ borderTop: '1px solid #e2e8f0', margin: '0.4rem 0', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <button
+                onClick={() => { setMobileMenuOpen(false); onOpenAuth('login'); }}
+                style={{
+                  width: '100%', padding: '0.75rem', borderRadius: 10, border: '1px solid #cbd5e1',
+                  background: 'white', color: '#0f172a', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer'
+                }}
+              >
+                Giriş Yap
+              </button>
+              <button
+                onClick={() => { setMobileMenuOpen(false); onOpenAuth('register'); }}
+                style={{
+                  width: '100%', padding: '0.75rem', borderRadius: 10, border: 'none',
+                  background: '#bf8253', color: 'white',
+                  fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                }}
+              >
+                <span>Kaydol</span>
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
-
-      {/* Mobile Drawer Menu (No Emojis) */}
-      {mobileMenuOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '68px',
-          left: 0,
-          right: 0,
-          background: 'white',
-          borderBottom: '1px solid #cbd5e1',
-          padding: '1.25rem 5%',
-          zIndex: 999,
-          boxShadow: '0 15px 30px rgba(0, 0, 0, 0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.85rem'
-        }}>
-          <div
-            onClick={() => scrollToSection('features')}
-            style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
-          >
-            Özellikler
-          </div>
-          <div
-            onClick={() => scrollToSection('gamification')}
-            style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
-          >
-            Ağaç Evrimi
-          </div>
-          <div
-            onClick={() => scrollToSection('gamification')}
-            style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
-          >
-            Anlık Çalışma Haritan
-          </div>
-          <div
-            onClick={() => scrollToSection('contact')}
-            style={{ padding: '0.7rem 1rem', borderRadius: 10, background: '#f8fafc', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }}
-          >
-            İletişim
-          </div>
-
-          <div style={{ borderTop: '1px solid #e2e8f0', margin: '0.4rem 0', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            <button
-              onClick={() => { setMobileMenuOpen(false); onOpenAuth('login'); }}
-              style={{
-                width: '100%', padding: '0.75rem', borderRadius: 10, border: '1px solid #cbd5e1',
-                background: 'white', color: '#0f172a', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer'
-              }}
-            >
-              Giriş Yap
-            </button>
-            <button
-              onClick={() => { setMobileMenuOpen(false); onOpenAuth('register'); }}
-              style={{
-                width: '100%', padding: '0.75rem', borderRadius: 10, border: 'none',
-                background: '#0f172a', color: 'white',
-                fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
-              }}
-            >
-              <span>Kaydol</span>
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 };

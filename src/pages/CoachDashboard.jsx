@@ -3,9 +3,10 @@ import {
   Users, Calendar, MessageSquare, Video, LogOut, PlusCircle, Search,
   Target, Heart, TrendingUp, Phone, Clock, Send, Check, X, ChevronDown, ChevronUp, Bell, Menu,
   CheckCircle, XCircle, Zap, BookOpen, BarChart2, Sparkles, AlertCircle, Award, Trophy, PenTool, Flame, ShieldAlert,
-  CheckSquare, Layers
+  CheckSquare, Layers, GraduationCap
 } from 'lucide-react';
 import Analytics from './Analytics';
+import UniSearchRobot from '../components/UniSearchRobot';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -21,12 +22,20 @@ import { getTopicsForExam, getSubTabsForExam, groupTopicsBySubject, findSubjectO
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const MOOD_CONFIG = {
-  great:   { label: 'Harika',    emoji: '🤩', color: '#10b981' },
-  excited: { label: 'Heyecanlı', emoji: '🚀', color: '#06b6d4' },
-  good:    { label: 'İyi',        emoji: '🙂', color: '#6366f1' },
-  tired:   { label: 'Yorgun',    emoji: '🥱', color: '#f59e0b' },
-  sad:     { label: 'Üzgün',     emoji: '😢', color: '#8b5cf6' },
-  stressed:{ label: 'Stresli',   emoji: '😫', color: '#ef4444' },
+  great:   { label: 'Harika',    emoji: '/emoji/harika.png', color: '#10b981' },
+  excited: { label: 'Heyecanlı', emoji: '/emoji/heyecanli.png', color: '#06b6d4' },
+  good:    { label: 'İyi',        emoji: '/emoji/iyi.png', color: '#6366f1' },
+  tired:   { label: 'Yorgun',    emoji: '/emoji/yorgun.png', color: '#f59e0b' },
+  sad:     { label: 'Üzgün',     emoji: '/emoji/uzgun.png', color: '#8b5cf6' },
+  stressed:{ label: 'Stresli',   emoji: '/emoji/stresli.png', color: '#ef4444' },
+};
+
+const trLower = (str) => (str || '').replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+
+const filterStudentsByQuery = (list, queryStr) => {
+  if (!queryStr || !queryStr.trim()) return list;
+  const q = trLower(queryStr.trim());
+  return list.filter(s => trLower(s.name).includes(q) || trLower(s.email).includes(q));
 };
 
 const formatMins = (mins = 0) => {
@@ -482,6 +491,7 @@ const CoachDashboard = () => {
           <CoachTabBtn active={activeTab==='goals'}        onClick={() => setActiveTab('goals')}        icon={Target}       label="Hedefler" />
           <CoachTabBtn active={activeTab==='moods'}        onClick={() => setActiveTab('moods')}        icon={Heart}        label="Duygular" />
           <CoachTabBtn active={activeTab==='analytics'}    onClick={() => setActiveTab('analytics')}    icon={TrendingUp}   label="Analiz" />
+          <CoachTabBtn active={activeTab==='uni-search'}   onClick={() => setActiveTab('uni-search')}   icon={GraduationCap}label="Üni Robotu" />
           <CoachTabBtn active={activeTab==='events'}       onClick={() => setActiveTab('events')}       icon={Calendar}     label="Etkinlikler" />
           <CoachTabBtn active={activeTab==='appointments'} onClick={() => setActiveTab('appointments')} icon={Phone}        label="Randevular" badge={pendingRequests.length} />
           <CoachTabBtn active={activeTab==='messages'}     onClick={() => setActiveTab('messages')}     icon={MessageSquare}label="Mesajlar" />
@@ -524,6 +534,7 @@ const CoachDashboard = () => {
                 { id: 'goals',        icon: Target,        label: 'Hedefler' },
                 { id: 'moods',        icon: Heart,         label: 'Duygular' },
                 { id: 'analytics',    icon: TrendingUp,    label: 'Analiz' },
+                { id: 'uni-search',   icon: GraduationCap, label: 'Üni Robotu' },
                 { id: 'events',       icon: Calendar,      label: 'Etkinlikler' },
                 { id: 'appointments', icon: Phone,         label: 'Randevular', badge: pendingRequests.length },
                 { id: 'messages',     icon: MessageSquare, label: 'Mesajlar' },
@@ -715,14 +726,14 @@ const CoachDashboard = () => {
                   </button>
                 </div>
               )}
-              {students.length > 0 && students.filter(s => (s.name || s.email || '').toLowerCase().includes(studentSearchQuery.trim().toLowerCase())).length === 0 && (
+              {students.length > 0 && filterStudentsByQuery(students, studentSearchQuery).length === 0 && (
                 <div className="card" style={{ padding: '2.5rem', textAlign: 'center', background: '#ffffff', border: '1px solid #e2e8f0' }}>
                   <Search size={36} style={{ color: '#94a3b8', marginBottom: '0.75rem' }} />
                   <p style={{ color: '#0f172a', fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.3rem' }}>Aradığınız kriterde öğrenci bulunamadı</p>
                   <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>"{studentSearchQuery}" ile eşleşen bir öğrenci kaydı yok. Arama kelimesini değiştirebilirsiniz.</p>
                 </div>
               )}
-              {students.filter(s => (s.name || s.email || '').toLowerCase().includes(studentSearchQuery.trim().toLowerCase())).map(student => {
+              {filterStudentsByQuery(students, studentSearchQuery).map(student => {
                 const isExpanded = expandedStudent === student.id;
                 const exams = studentExams[student.id] || [];
                 const mood = student.currentMood ? MOOD_CONFIG[student.currentMood] : null;
@@ -775,6 +786,7 @@ const CoachDashboard = () => {
                         <div style={{ display: 'flex', gap: '0.4rem', background: '#f8fafc', padding: '0.4rem', borderRadius: 12, marginBottom: '1.25rem', overflowX: 'auto', border: '1px solid #e2e8f0' }}>
                           {[
                             { id: 'overview', label: 'Genel & Ağaç', icon: BarChart2 },
+                            { id: 'reports', label: 'Zayıf Konu Analizi', icon: AlertCircle },
                             { id: 'calendar', label: 'Çalışma & Isı Haritası', icon: Calendar },
                             { id: 'exams', label: 'Deneme & ÖSYM', icon: PenTool },
                             { id: 'questions', label: 'Çözülen Sorular', icon: TrendingUp },
@@ -840,6 +852,85 @@ const CoachDashboard = () => {
                             </div>
                           </div>
                         )}
+
+                        {/* Sub-tab: REPORTS (ZAYIF KONU ANALİZİ) */}
+                        {((studentTab[student.id] || 'overview') === 'reports') && (() => {
+                          const studentExList = studentExams[student.id] || [];
+                          const topicMap = {};
+                          studentExList.forEach(e => {
+                            (e.revisedTopics || []).forEach(t => {
+                              if (!topicMap[t]) topicMap[t] = { count: 0, exams: [] };
+                              topicMap[t].count += 1;
+                              topicMap[t].exams.push(e);
+                            });
+                          });
+                          const recurring = Object.entries(topicMap)
+                            .filter(([, d]) => d.count >= 2)
+                            .sort((a, b) => b[1].count - a[1].count);
+                          const allTopics = Object.entries(topicMap).sort((a, b) => b[1].count - a[1].count);
+                          const sName = student.name || student.email;
+
+                          return (
+                            <div>
+                              <h4 style={{ color: '#ef4444', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <AlertCircle size={18} /> Öğrenci Deneme Zayıf Konu Raporu
+                              </h4>
+
+                              {recurring.length > 0 ? (
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                  <div style={{ padding: '0.85rem 1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, marginBottom: '1rem' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', fontWeight: 700 }}>
+                                      🚨 <strong>{sName}</strong> isimli öğrenci aşağıdaki konuları tüm denemelerde <u>sürekli yanlış yapıyor</u>:
+                                    </p>
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    {recurring.map(([topicName, data]) => (
+                                      <div key={topicName} style={{ padding: '0.85rem 1rem', background: '#ffffff', border: '1.5px solid #f87171', borderRadius: 12 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                                          <span style={{ fontWeight: 800, color: '#991b1b', fontSize: '0.9rem' }}>⚠️ {topicName}</span>
+                                          <span style={{ padding: '0.15rem 0.6rem', borderRadius: 12, background: '#ef4444', color: 'white', fontWeight: 800, fontSize: '0.75rem' }}>
+                                            {data.count}x Yanlış
+                                          </span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#b91c1c', fontWeight: 600 }}>
+                                          {sName} bu konuyu <strong>{data.count}</strong> denemede üst üste yanlış yaptı. Özel çalışma verilmesi önerilir.
+                                        </p>
+                                        <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                          {data.exams.map((ex, idx) => (
+                                            <span key={idx} style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#fee2e2', color: '#991b1b', borderRadius: 6, fontWeight: 600 }}>
+                                              {ex.title} ({ex.date})
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : studentExList.length > 0 ? (
+                                <div style={{ padding: '1.25rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, textAlign: 'center', marginBottom: '1.25rem' }}>
+                                  <span style={{ fontSize: '0.88rem', color: '#166534', fontWeight: 700 }}>
+                                    ✅ {sName} denemelerinde henüz 2+ kez tekrar eden zayıf konu bulunmuyor.
+                                  </span>
+                                </div>
+                              ) : (
+                                <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Öğrencinin henüz kaydedilmiş deneme sınavı bulunmuyor.</p>
+                              )}
+
+                              {allTopics.length > 0 && (
+                                <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+                                  <h5 style={{ margin: '0 0 0.6rem', color: '#334155', fontSize: '0.85rem', fontWeight: 800 }}>Tüm İşaretlenen Yanlış/Eksik Konu Geçmişi ({allTopics.length} Konu)</h5>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {allTopics.map(([tName, data]) => (
+                                      <span key={tName} style={{ padding: '0.3rem 0.65rem', borderRadius: 12, fontSize: '0.75rem', fontWeight: 700, background: data.count >= 2 ? '#fee2e2' : '#ffffff', border: `1px solid ${data.count >= 2 ? '#fca5a5' : '#cbd5e1'}`, color: data.count >= 2 ? '#991b1b' : '#475569' }}>
+                                        {tName} {data.count > 1 && `(${data.count}x)`}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Sub-tab: EXAMS */}
                         {((studentTab[student.id] || 'overview') === 'exams') && (
@@ -1009,7 +1100,7 @@ const CoachDashboard = () => {
                                       const mc = MOOD_CONFIG[m.mood];
                                       return (
                                         <div key={m.id} style={{ textAlign: 'center', padding: '0.65rem 0.9rem', background: `${mc?.color}15`, border: `1px solid ${mc?.color}35`, borderRadius: 12 }}>
-                                          <p style={{ margin: 0, fontSize: '1.5rem' }}>{mc?.emoji}</p>
+                                          <img src={mc?.emoji} alt={mc?.label} style={{ width: '1.8rem', height: '1.8rem', objectFit: 'contain', margin: '0 auto' }} />
                                           <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', fontWeight: 800, color: mc?.color }}>{mc?.label}</p>
                                           <p style={{ margin: 0, fontSize: '0.68rem', color: '#64748b' }}>{m.date?.slice(5)}</p>
                                         </div>
@@ -1139,8 +1230,23 @@ const CoachDashboard = () => {
         {activeTab === 'goals' && (
           <div>
             <h1 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Target size={24} color="#6366f1" /> Tüm Öğrencilerin Hedefleri</h1>
+            <div style={{ marginBottom: '1.25rem', position: 'relative' }}>
+              <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                value={studentSearchQuery}
+                onChange={e => setStudentSearchQuery(e.target.value)}
+                placeholder="Öğrenci adına veya e-postasına göre süz..."
+                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.85rem', borderRadius: 12, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', outline: 'none' }}
+              />
+              {studentSearchQuery && (
+                <button onClick={() => setStudentSearchQuery('')} style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {students.map(student => {
+              {filterStudentsByQuery(students, studentSearchQuery).map(student => {
                 const goals = studentGoals[student.id] || [];
                 return (
                   <div key={student.id} className="card">
@@ -1216,19 +1322,39 @@ const CoachDashboard = () => {
           </div>
         )}
 
+        {/* ---- AKILLI ÜNİVERSİTE & BÖLÜM ROBOTU ---- */}
+        {activeTab === 'uni-search' && (
+          <UniSearchRobot isCoachView={true} />
+        )}
+
         {/* ---- DUYGU DURUMLARI ---- */}
         {activeTab === 'moods' && (
           <div>
             <h1 style={{ marginBottom: '1.5rem' }}>💭 Öğrenci Duygu Durumları</h1>
+            <div style={{ marginBottom: '1.25rem', position: 'relative' }}>
+              <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                value={studentSearchQuery}
+                onChange={e => setStudentSearchQuery(e.target.value)}
+                placeholder="Öğrenci adına veya e-postasına göre süz..."
+                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.85rem', borderRadius: 12, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', outline: 'none' }}
+              />
+              {studentSearchQuery && (
+                <button onClick={() => setStudentSearchQuery('')} style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
-              {students.map(student => {
+              {filterStudentsByQuery(students, studentSearchQuery).map(student => {
                 const mood = student.currentMood ? MOOD_CONFIG[student.currentMood] : null;
                 const moodHistory = studentMoods[student.id] || [];
                 return (
                   <div key={student.id} className="card" style={{ border: `1px solid ${mood ? mood.color + '30' : '#e2e8f0'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                       <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#1e293b' }}>{student.name || student.email}</h3>
-                      {mood ? <div style={{ textAlign: 'center' }}><span style={{ fontSize: '1.8rem' }}>{mood.emoji}</span><p style={{ margin: 0, fontSize: '0.65rem', color: mood.color }}>{mood.label}</p></div>
+                      {mood ? <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}><img src={mood.emoji} alt={mood.label} style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} /><p style={{ margin: 0, fontSize: '0.65rem', color: mood.color }}>{mood.label}</p></div>
                         : <span style={{ fontSize: '1.5rem', opacity: 0.3 }}>😐</span>}
                     </div>
                     <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '0 0 0.5rem' }}>
@@ -1245,7 +1371,7 @@ const CoachDashboard = () => {
                       <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
                         {moodHistory.map(m => {
                           const mc = MOOD_CONFIG[m.mood];
-                          return <div key={m.id} title={m.date} style={{ fontSize: '1rem' }}>{mc?.emoji}</div>;
+                          return <div key={m.id} title={m.date} style={{ display: 'flex', alignItems: 'center' }}><img src={mc?.emoji} alt="mood" style={{ width: '1.2rem', height: '1.2rem', objectFit: 'contain' }} /></div>;
                         })}
                       </div>
                     )}
@@ -1366,9 +1492,24 @@ const CoachDashboard = () => {
             <div className="coach-messages-grid" style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '1.25rem', height: '70vh' }}>
               {/* Student list */}
               <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '1rem' }}>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Öğrenciler</p>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Öğrenciler</p>
+                <div style={{ position: 'relative', marginBottom: '0.6rem' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    placeholder="Öğrenci ara..."
+                    value={studentSearchQuery}
+                    onChange={e => setStudentSearchQuery(e.target.value)}
+                    style={{ width: '100%', padding: '0.35rem 1.8rem 0.35rem 1.8rem', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.78rem', outline: 'none' }}
+                  />
+                  {studentSearchQuery && (
+                    <button onClick={() => setStudentSearchQuery('')} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', overflowY: 'auto' }}>
-                  {students.map(s => (
+                  {filterStudentsByQuery(students, studentSearchQuery).map(s => (
                     <button key={s.id} onClick={() => setSelectedMsgStudent(s)} style={{
                       display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.7rem', borderRadius: 8,
                       border: `1px solid ${selectedMsgStudent?.id === s.id ? '#6366f1' : 'transparent'}`,

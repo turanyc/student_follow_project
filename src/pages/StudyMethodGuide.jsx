@@ -185,7 +185,7 @@ const StudyMethodGuide = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/student', { state: { dashTab: 'pomodoro' } })}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.35rem',
               padding: '0.5rem 1rem', borderRadius: 12, border: 'none',

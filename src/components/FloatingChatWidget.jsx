@@ -147,7 +147,7 @@ const FloatingChatWidget = () => {
   if (!currentUser) return null;
 
   return (
-    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999999, fontFamily: 'Outfit, -apple-system, sans-serif' }}>
+    <div style={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', right: 24, zIndex: 999999, fontFamily: 'Outfit, -apple-system, sans-serif' }}>
       
       {/* Facebook Messenger Tarzı Yüzen Balon Buton */}
       <AnimatePresence>
