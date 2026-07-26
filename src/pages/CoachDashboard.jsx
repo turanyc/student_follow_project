@@ -88,6 +88,7 @@ const CoachDashboard = () => {
   const [studentMoods, setStudentMoods]   = useState({});
   const [studentStudyToday, setStudentStudyToday] = useState({});
   const [studentSolvedQuestions, setStudentSolvedQuestions] = useState({});
+  const [studentSmartPlanner, setStudentSmartPlanner] = useState({});
   const [studentResources, setStudentResources]             = useState({});
   const [studentOsymTargets, setStudentOsymTargets]         = useState({});
   const [studentCurriculum, setStudentCurriculum]           = useState({});
@@ -356,6 +357,15 @@ const CoachDashboard = () => {
       snap => setStudentCurriculum(p => ({ ...p, [sid]: snap.exists() ? (snap.data().checked || {}) : {} }))
     );
 
+    const unsubSmartPlanner = onSnapshot(
+      doc(db, 'users', sid, 'settings', 'smartPlannerData'),
+      snap => {
+        if (snap.exists()) {
+          setStudentSmartPlanner(p => ({ ...p, [sid]: snap.data() }));
+        }
+      }
+    );
+
     // Set default exam group for coach view
     const studentObj = students.find(s => s.id === sid);
     const grp = studentObj?.examType === 'lgs' ? 'LGS' : (studentObj?.examType === 'kpss' ? 'KPSS' : 'YKS');
@@ -363,7 +373,7 @@ const CoachDashboard = () => {
     const defSub = grp === 'LGS' ? 'LGS' : (grp === 'KPSS' ? 'KPSS Lisans' : 'TYT');
     setCoachCurriculumSubTab(p => ({ ...p, [sid]: p[sid] || defSub }));
 
-    return () => { unsubExams(); unsubGoals(); unsubMood(); unsubSess(); unsubSq(); unsubRes(); unsubOsym(); unsubCurriculum(); };
+    return () => { unsubExams(); unsubGoals(); unsubMood(); unsubSess(); unsubSq(); unsubRes(); unsubOsym(); unsubCurriculum(); unsubSmartPlanner(); };
   }, [expandedStudent, students]);
 
   // ── Chat ──────────────────────────────────────────────────────────────
@@ -1071,6 +1081,35 @@ const CoachDashboard = () => {
                         {((studentTab[student.id] || 'overview') === 'goals') && (
                           <div>
                             <h4 style={{ color: '#1e293b', margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Target size={16} /> Hedefler, Görevler & Koç Tavsiyeleri</h4>
+                            
+                            {/* Öğrencinin Canlı Akıllı Planlayıcı Görevleri (Smart Planner) */}
+                            <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+                              <h5 style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', fontWeight: 800, color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                ⚡ Öğrencinin Canlı Akıllı Planlayıcı Görevleri (Smart Planner)
+                              </h5>
+                              {(!studentSmartPlanner[student.id]?.dailyTasks || studentSmartPlanner[student.id]?.dailyTasks.length === 0) ? (
+                                <p style={{ color: '#94a3b8', fontSize: '0.82rem', margin: 0 }}>Öğrenci henüz Akıllı Planlayıcı görevlerini başlatmadı.</p>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                  {studentSmartPlanner[student.id].dailyTasks.map(task => {
+                                    const pct = Math.min(100, Math.round((task.completedCount / task.targetCount) * 100));
+                                    return (
+                                      <div key={task.id} style={{ padding: '0.65rem 0.85rem', background: task.completedCount >= task.targetCount ? '#f0fdf4' : '#ffffff', border: '1px solid #cbd5e1', borderRadius: 10 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                                          <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0f172a' }}>{task.topic}</span>
+                                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: task.completedCount >= task.targetCount ? '#10b981' : '#6366f1' }}>
+                                            {task.completedCount} / {task.targetCount} Soru ({pct}%)
+                                          </span>
+                                        </div>
+                                        <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                                          <div style={{ width: `${pct}%`, height: '100%', background: task.completedCount >= task.targetCount ? '#10b981' : '#6366f1' }} />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                             {(studentGoals[student.id] || []).length === 0 ? <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Öğrenci henüz hedef eklememiş.</p> : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {(studentGoals[student.id] || []).map(goal => {
