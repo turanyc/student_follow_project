@@ -422,7 +422,18 @@ const LiveLeaderboard = () => {
               WebkitTextFillColor: 'transparent',
               textShadow: '0 4px 15px rgba(245, 158, 11, 0.4)'
             }}>
-              Bugün Kim Ne Kadar Çalıştı? 🔥
+              Bugün Kim Ne Kadar Çalıştı?
+              <img
+                src="/leaderboard/ates.png"
+                alt="Ateş"
+                style={{
+                  height: '1.4em',
+                  width: 'auto',
+                  verticalAlign: 'middle',
+                  display: 'inline-block',
+                  filter: 'drop-shadow(0 2px 8px rgba(245, 158, 11, 0.6))'
+                }}
+              />
             </h1>
             <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.98rem', maxWidth: '640px', lineHeight: 1.6 }}>
               Sınıfındaki diğer öğrencilerin bugün kaç saat ders çalıştığını canlı takip et, rekabete katıl ve günün şampiyonu sen ol!

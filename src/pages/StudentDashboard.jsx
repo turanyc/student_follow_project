@@ -22,11 +22,15 @@ import StudyHeatmapCalendar from '../components/StudyHeatmapCalendar';
 import LiveLeaderboard from './LiveLeaderboard';
 import ProfileEditModal from '../components/ProfileEditModal';
 
+const AtesIcon = () => (
+  <img src="/leaderboard/ates.png" alt="Ateş" style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle' }} />
+);
+
 const NAV_ITEMS = [
   { path: '/student/smart-planner',icon: Brain,       label: 'Akıllı Planlayıcı ⚡', color: '#a855f7' },
   { path: '/student/study-map',    icon: Flame,        label: 'Anlık Çalışma Haritan', color: '#38bdf8' },
   { path: '/student/messages',     icon: MessageSquare,label: 'Mesajlarım 💬',        color: '#8b5cf6' },
-  { path: '/student/leaderboard',  icon: Trophy,       label: 'Canlı Liderlik & Yarışma', color: '#3b82f6' },
+  { path: '/student/leaderboard',  icon: AtesIcon,     label: 'Canlı Liderlik & Yarışma', color: '#f59e0b' },
   { path: '/student/planner',      icon: Calendar,     label: 'Planlar & Görevler', color: '#6366f1' },
   { path: '/student/goals',        icon: Target,       label: 'Hedeflerim',         color: '#3b82f6' },
   { path: '/student/osym-target',  icon: Award,        label: 'ÖSYM Hedef Tablom',  color: '#6366f1' },
@@ -659,13 +663,13 @@ const StudentDashboard = ({ children }) => {
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'rgba(30,119,150,0.06)', padding: '0.6rem', borderRadius: 10 }} onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', overflow: 'hidden' }}>
-                    {userData.avatarEmoji || (userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'rgba(30,119,150,0.06)', padding: '0.65rem 0.85rem', borderRadius: 14 }} onClick={() => { setIsMobileMenuOpen(false); handleGuardedNavigation(() => navigate('/student/profile')); }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden', border: '2px solid #38bdf8', flexShrink: 0 }}>
+                    {userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (userData.avatarEmoji || '🎓')}
                   </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>{userData.name || userData.email || 'Öğrenci Paneli'}</p>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#1e7796' }}>Profil & Ayarlar</p>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userData.name || userData.displayName || userData.email}</p>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#6366f1', fontWeight: 600 }}>Profil Sayfam ➔</p>
                   </div>
                 </div>
               </div>
@@ -739,14 +743,13 @@ const StudentDashboard = ({ children }) => {
           </div>
         </div>
 
-        <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => handleGuardedNavigation(() => navigate('/student/profile'))} title="Profilinizi ve Hedeflerinizi Düzenleyin">
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(30, 119, 150, 0.25)', overflow: 'hidden' }}>
-              {userData.avatarEmoji || (userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🎓')}
+        <div className="sidebar-logo" style={{ position: 'relative', zIndex: 1, paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem', cursor: 'pointer', flex: 1 }} onClick={() => handleGuardedNavigation(() => navigate('/student/profile'))} title="Profilinizi Düzenlemek İçin Tıklayın">
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: userData.photoURL ? 'transparent' : '#1e7796', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', boxShadow: '0 4px 14px rgba(30, 119, 150, 0.3)', overflow: 'hidden', border: '2px solid #38bdf8', flexShrink: 0 }}>
+              {userData.photoURL ? <img src={userData.photoURL} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (userData.avatarEmoji || '🎓')}
             </div>
             <div style={{ overflow: 'hidden' }}>
-              <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>⚙️ Profil Düzenle</p>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: '#1e7796', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userData.name || userData.email}</p>
+              <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userData.name || userData.displayName || userData.email}</p>
             </div>
           </div>
           <div style={{ position: 'relative' }}>

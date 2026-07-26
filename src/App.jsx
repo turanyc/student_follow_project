@@ -95,7 +95,7 @@ const AnimatedRoutes = () => {
 
         {/* Shared */}
         <Route path="/profile" element={<ProtectedRoute><StudentDashboard><Profile /></StudentDashboard></ProtectedRoute>} />
-        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><StudentDashboard><StudentMessages /></StudentDashboard></ProtectedRoute>} />
         <Route path="/video-call" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
       </Routes>
     </AnimatePresence>

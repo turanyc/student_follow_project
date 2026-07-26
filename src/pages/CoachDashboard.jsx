@@ -1425,35 +1425,71 @@ const CoachDashboard = () => {
         )}
 
         {/* ---- ETKİNLİKLER ---- */}
-        {activeTab === 'events' && (
-          <div>
-            <h1 style={{ marginBottom: '1.5rem' }}>📅 Etkinlik Yönetimi</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-              <div className="card">
-                <h3 style={{ color: '#10b981', marginBottom: '1rem' }}>➕ Yeni Etkinlik Duyur</h3>
-                <form onSubmit={handleCreateEvent}>
-                  <input type="text" required className="input-field" placeholder="Etkinlik Adı" value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} style={{ marginBottom: '0.75rem' }} />
-                  <input type="datetime-local" required className="input-field" value={newEventDate} onChange={e => setNewEventDate(e.target.value)} style={{ marginBottom: '0.75rem' }} />
-                  <button type="submit" className="btn btn-success" disabled={creatingEvent} style={{ width: '100%' }}>
-                    {creatingEvent ? 'Oluşturuluyor...' : 'Tüm Öğrencilere Duyur'}
-                  </button>
-                </form>
-              </div>
-              <div className="card">
-                <h3 style={{ marginBottom: '1rem' }}>Aktif Etkinlikler ({events.length})</h3>
-                <div style={{ maxHeight: 350, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {events.length === 0 ? <p style={{ color: '#94a3b8' }}>Henüz etkinlik yok.</p>
-                    : events.map(ev => (
-                      <div key={ev.id} style={{ padding: '0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
-                        <p style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>{ev.title}</p>
-                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>{new Date(ev.date).toLocaleString('tr-TR')}</p>
-                      </div>
-                    ))}
+        {activeTab === 'events' && (() => {
+          const now = Date.now();
+          const activeEvs = events.filter(ev => new Date(ev.date).getTime() >= now);
+          const pastEvs = events.filter(ev => new Date(ev.date).getTime() < now);
+
+          return (
+            <div>
+              <h1 style={{ marginBottom: '1.5rem' }}>📅 Etkinlik Yönetimi</h1>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1.5rem' }}>
+                <div className="card" style={{ height: 'fit-content' }}>
+                  <h3 style={{ color: '#10b981', marginBottom: '1rem' }}>➕ Yeni Etkinlik Duyur</h3>
+                  <form onSubmit={handleCreateEvent}>
+                    <input type="text" required className="input-field" placeholder="Etkinlik Adı (Örn: Canlı Deneme Analizi)" value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} style={{ marginBottom: '0.75rem' }} />
+                    <input type="datetime-local" required className="input-field" value={newEventDate} onChange={e => setNewEventDate(e.target.value)} style={{ marginBottom: '0.75rem' }} />
+                    <button type="submit" className="btn btn-success" disabled={creatingEvent} style={{ width: '100%', fontWeight: 800 }}>
+                      {creatingEvent ? 'Oluşturuluyor...' : '📢 Tüm Öğrencilere Duyur'}
+                    </button>
+                  </form>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Aktif Etkinlikler */}
+                  <div className="card">
+                    <h3 style={{ marginBottom: '1rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '1.05rem', fontWeight: 800 }}>
+                      🟢 Aktif & Gelecek Etkinlikler ({activeEvs.length})
+                    </h3>
+                    <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {activeEvs.length === 0 ? (
+                        <p style={{ color: '#94a3b8', fontSize: '0.88rem' }}>Şu an aktif veya planlanan etkinlik bulunmuyor.</p>
+                      ) : activeEvs.map(ev => (
+                        <div key={ev.id} style={{ padding: '0.8rem 1rem', background: '#ecfdf5', border: '1.5px solid #a7f3d0', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 800, color: '#065f46', fontSize: '0.92rem' }}>{ev.title}</p>
+                            <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#047857', fontWeight: 600 }}>📅 {new Date(ev.date).toLocaleString('tr-TR')}</p>
+                          </div>
+                          <span style={{ padding: '0.2rem 0.6rem', borderRadius: 20, background: '#10b981', color: 'white', fontSize: '0.7rem', fontWeight: 900 }}>Gelecek</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Geçmiş Etkinlikler */}
+                  <div className="card">
+                    <h3 style={{ marginBottom: '1rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '1.05rem', fontWeight: 800 }}>
+                      📜 Geçmiş Etkinlikler ({pastEvs.length})
+                    </h3>
+                    <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {pastEvs.length === 0 ? (
+                        <p style={{ color: '#94a3b8', fontSize: '0.88rem' }}>Geçmiş etkinlik bulunmuyor.</p>
+                      ) : pastEvs.map(ev => (
+                        <div key={ev.id} style={{ padding: '0.75rem 1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, opacity: 0.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, color: '#475569', fontSize: '0.88rem' }}>{ev.title}</p>
+                            <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>📅 {new Date(ev.date).toLocaleString('tr-TR')}</p>
+                          </div>
+                          <span style={{ padding: '0.15rem 0.55rem', borderRadius: 20, background: '#e2e8f0', color: '#64748b', fontSize: '0.68rem', fontWeight: 800 }}>Tamamlandı</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ---- GÖRÜŞME TALEPLERİ ---- */}
         {activeTab === 'appointments' && (
