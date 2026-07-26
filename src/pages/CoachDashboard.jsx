@@ -3,7 +3,7 @@ import {
   Users, Calendar, MessageSquare, Video, LogOut, PlusCircle, Search,
   Target, Heart, TrendingUp, Phone, Clock, Send, Check, X, ChevronDown, ChevronUp, Bell, Menu,
   CheckCircle, XCircle, Zap, BookOpen, BarChart2, Sparkles, AlertCircle, Award, Trophy, PenTool, Flame, ShieldAlert,
-  CheckSquare, Layers, GraduationCap
+  CheckSquare, Layers, GraduationCap, User
 } from 'lucide-react';
 import Analytics from './Analytics';
 import UniSearchRobot from '../components/UniSearchRobot';
